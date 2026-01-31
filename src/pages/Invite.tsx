@@ -29,7 +29,7 @@ type RSVPInsert = {
   guests_count: number;
   kids: boolean;
   kids_count: number;
-  notes?: string | null;
+  //notes?: string | null;
 };
 
 type Toast = { type: "ok" | "err"; msg: string } | null;
@@ -639,7 +639,7 @@ export default function Invite() {
     guests: 1,
     kids: false,
     kids_count: 0,
-    notes: "",
+    //notes: "",
   });
 
   const [sending, setSending] = useState(false);
@@ -655,7 +655,7 @@ export default function Invite() {
   guests_count: Number(form.guests) || 1,
   kids: Boolean(form.kids),
   kids_count: form.kids ? Number(form.kids_count) || 0 : 0,
-  notes: form.notes.trim() ? form.notes.trim() : null,
+  //notes: form.notes.trim() ? form.notes.trim() : null,
 };
 
     if (!payload.first_name || !payload.last_name || !payload.phone) {
@@ -672,7 +672,7 @@ export default function Invite() {
       return;
     }
 
-    showToast("ok", "¡Confirmación enviada! Gracias ✨");
+    showToast("ok", "¡Confirmación enviada! Gracias");
     setConfetti(true);
     window.setTimeout(() => setConfetti(false), 900);
 
@@ -683,7 +683,7 @@ export default function Invite() {
       guests: 1,
       kids: false,
       kids_count: 0,
-      notes: "",
+      //notes: "",
     });
   };
 
