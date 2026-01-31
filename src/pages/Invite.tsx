@@ -448,7 +448,7 @@ export default function Invite() {
         "https://www.pinterest.com/search/pins/?q=outfits%20boda%20formal%20elegante%20hombre%20mujer",
 
       dressExample:
-        "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/Dress%20code%20formal%20boda.jpg",
+        "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/Dress%20code%20formal%20boda%20(1).jpg",
 
       bank: {
         bank: "Banco BHD",

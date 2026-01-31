@@ -235,7 +235,7 @@ export default function Admin() {
               {errMsg ? <div className="errorBox">Error: {errMsg}</div> : null}
 
               <div className="hint">
-                *Este acceso solo es para administradores (Supabase Auth).
+                *Este acceso solo es para los Novios .
               </div>
             </form>
           </motion.div>
