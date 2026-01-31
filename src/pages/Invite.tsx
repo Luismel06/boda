@@ -41,9 +41,7 @@ function formatDateDMY(dateISO: string) {
   const d = new Date(dateISO);
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
 }
-function clamp(n: number, a: number, b: number) {
-  return Math.max(a, Math.min(b, n));
-}
+
 
 /** =======================
  *  Tiny helpers
