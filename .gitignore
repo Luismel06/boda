@@ -1,0 +1,9 @@
+# Env
+.env
+.env.*
+!.env.example
+
+# Vite / build
+dist
+node_modules
+.DS_Store
