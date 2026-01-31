@@ -26,7 +26,7 @@ type RSVPInsert = {
   first_name: string;
   last_name: string;
   phone: string;
-  guests: number;
+  guests_count: number;
   kids: boolean;
   kids_count: number;
   notes?: string | null;
@@ -651,14 +651,14 @@ export default function Invite() {
     e.preventDefault();
 
     const payload: RSVPInsert = {
-      first_name: form.first_name.trim(),
-      last_name: form.last_name.trim(),
-      phone: form.phone.trim(),
-      guests: clamp(Number(form.guests) || 1, 1, 20),
-      kids: Boolean(form.kids),
-      kids_count: form.kids ? clamp(Number(form.kids_count) || 0, 0, 20) : 0,
-      notes: form.notes.trim() ? form.notes.trim() : null,
-    };
+  first_name: form.first_name.trim(),
+  last_name: form.last_name.trim(),
+  phone: form.phone.trim(),
+  guests_count: Number(form.guests) || 1,
+  kids: Boolean(form.kids),
+  kids_count: form.kids ? Number(form.kids_count) || 0 : 0,
+  notes: form.notes.trim() ? form.notes.trim() : null,
+};
 
     if (!payload.first_name || !payload.last_name || !payload.phone) {
       showToast("err", "Completa nombre, apellido y teléfono.");
@@ -927,15 +927,11 @@ export default function Invite() {
         {/* 5) Regalos / Banco */}
         <SheetSection id="regalos" watermark={WEDDING.initials}>
           <HeaderScript
-            title="Sugerencia de regalos"
-            subtitle="Tu presencia en este día tan especial es el mejor regalo."
+            title="Detalle"
+            subtitle="Tu presencia es lo mas importante para nosotros, pero si deseas colaborar con nuestra luna de miel, este es nuestro numero de cuenta (opcional)."
           />
 
           <div className="giftCard">
-            <p className="textMuted" style={{ marginTop: 0 }}>
-              Si deseas bendecirnos con un obsequio, agradecemos que sea en efectivo. <br />
-              Te dejamos aquí nuestro número de cuenta.
-            </p>
 
             <div className="bankCard">
               <div className="bankTop">

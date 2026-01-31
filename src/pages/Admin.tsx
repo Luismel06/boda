@@ -1,368 +1,1010 @@
 // src/pages/Admin.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { motion, AnimatePresence } from "framer-motion";
-
-/**
- * ✅ Admin.tsx
- * - Ver lista de RSVPs (quienes confirmaron)
- * - Totales (personas, niños)
- * - Filtro simple por nombre/teléfono
- *
- * NOTA: Esto asume que tu tabla se llama "rsvps"
- * y tiene columnas: first_name, last_name, phone, guests, kids, kids_count, notes, created_at
- */
+import { AnimatePresence, motion } from "framer-motion";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 type RSVPRow = {
-  id?: string;
+  id: string;
   first_name: string;
   last_name: string;
   phone: string;
-  guests: number;
+  guests_count: number;
   kids: boolean;
   kids_count: number;
-  notes: string | null;
-  created_at?: string;
+  created_at: string;
 };
 
+type FilterMode = "all" | "kids" | "no_kids";
+
+function fmtDate(ts: string) {
+  try {
+    return new Date(ts).toLocaleString();
+  } catch {
+    return ts;
+  }
+}
+
+function initials(first: string, last: string) {
+  const a = (first?.trim()?.[0] || "").toUpperCase();
+  const b = (last?.trim()?.[0] || "").toUpperCase();
+  return (a + b) || "JG";
+}
+
 export default function Admin() {
+  // ============== AUTH ==============
+  const [session, setSession] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  // ============== DATA ==============
   const [rows, setRows] = useState<RSVPRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [q, setQ] = useState("");
+  const [errMsg, setErrMsg] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterMode>("all");
 
-  const totals = useMemo(() => {
-    const totalGuests = rows.reduce((a, r) => a + (Number(r.guests) || 0), 0);
-    const totalKids = rows.reduce((a, r) => a + (Number(r.kids_count) || 0), 0);
-    const totalConfirmed = rows.length;
-    return { totalGuests, totalKids, totalConfirmed };
-  }, [rows]);
+  // ============== UI EXTRA ==============
+  const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+  const [selected, setSelected] = useState<RSVPRow | null>(null);
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return rows;
-    return rows.filter((r) =>
-      `${r.first_name} ${r.last_name} ${r.phone}`.toLowerCase().includes(s)
-    );
-  }, [q, rows]);
+  const showToast = (type: "ok" | "err", msg: string) => {
+    setToast({ type, msg });
+    window.setTimeout(() => setToast(null), 2600);
+  };
 
   useEffect(() => {
     let alive = true;
 
-    async function load() {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("rsvps")
-        .select("id,first_name,last_name,phone,guests,kids,kids_count,notes,created_at")
-        .order("created_at", { ascending: false });
-
+    async function initAuth() {
+      setAuthLoading(true);
+      const { data } = await supabase.auth.getSession();
       if (!alive) return;
-      setLoading(false);
 
-      if (error) {
-        console.error(error);
-        return;
-      }
-      setRows((data as RSVPRow[]) || []);
+      setSession(data.session ?? null);
+      setAuthLoading(false);
+
+      supabase.auth.onAuthStateChange((_event, newSession) => {
+        setSession(newSession);
+      });
     }
 
-    load();
-
+    initAuth();
     return () => {
       alive = false;
     };
   }, []);
 
-  return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Great+Vibes&display=swap');
-      `}</style>
+  const totals = useMemo(() => {
+    const totalGuests = rows.reduce((a, r) => a + (Number(r.guests_count) || 0), 0);
+    const totalKids = rows.reduce((a, r) => a + (Number(r.kids_count) || 0), 0);
+    const totalConfirmed = rows.length;
+    const totalWithKids = rows.reduce((a, r) => a + ((Number(r.kids_count) || 0) > 0 ? 1 : 0), 0);
+    return { totalGuests, totalKids, totalConfirmed, totalWithKids };
+  }, [rows]);
 
-      <div style={pageBg} />
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
 
-      <div style={wrap}>
-        <header style={header}>
-          <div>
-            <div style={title}>Admin RSVP</div>
-            <div style={sub}>Junior & Glenny</div>
+    let base = rows;
+    if (filter === "kids") base = rows.filter((r) => (Number(r.kids_count) || 0) > 0);
+    if (filter === "no_kids") base = rows.filter((r) => (Number(r.kids_count) || 0) === 0);
+
+    if (!s) return base;
+
+    return base.filter((r) =>
+      `${r.first_name} ${r.last_name} ${r.phone}`.toLowerCase().includes(s)
+    );
+  }, [q, rows, filter]);
+
+  const load = async () => {
+    setErrMsg(null);
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("rsvps")
+      .select("id,first_name,last_name,phone,guests_count,kids,kids_count,created_at")
+      .order("created_at", { ascending: false });
+
+    setLoading(false);
+
+    if (error) {
+      console.error(error);
+      setErrMsg(error.message);
+      showToast("err", error.message);
+      return;
+    }
+
+    setRows((data as RSVPRow[]) || []);
+  };
+
+  useEffect(() => {
+    if (!session) return;
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
+  const signIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrMsg(null);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    if (error) {
+      setErrMsg(error.message);
+      showToast("err", error.message);
+      return;
+    }
+
+    showToast("ok", "Sesión iniciada");
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setRows([]);
+    setSelected(null);
+    showToast("ok", "Sesión cerrada");
+  };
+
+  const copy = async (txt: string, okMsg: string) => {
+    try {
+      await navigator.clipboard.writeText(txt);
+      showToast("ok", okMsg);
+    } catch {
+      showToast("err", "No se pudo copiar");
+    }
+  };
+
+  // =========================
+  // AUTH LOADING
+  // =========================
+  if (authLoading) {
+    return (
+      <>
+        <style>{fontsCss}</style>
+        <style>{styles}</style>
+        <div className="appBg" />
+        <div className="appShell">
+          <div className="glassCard centerCard">Cargando...</div>
+        </div>
+      </>
+    );
+  }
+
+  // =========================
+  // LOGIN
+  // =========================
+  if (!session) {
+    return (
+      <>
+        <style>{fontsCss}</style>
+        <style>{styles}</style>
+
+        <div className="appBg" />
+
+        <div className="appShell">
+          <div className="heroTop">
+            <div className="brand">
+              <div className="brandCaps">Admin RSVP</div>
+              <div className="brandScript">Junior & Glenny</div>
+            </div>
           </div>
 
-          <div style={statsRow}>
-            <Stat label="Confirmaciones" value={totals.totalConfirmed} />
-            <Stat label="Personas" value={totals.totalGuests} />
-            <Stat label="Niños" value={totals.totalKids} />
-          </div>
-        </header>
-
-        <div style={toolbar}>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por nombre o teléfono..."
-            style={search}
-          />
-          <button
-            onClick={async () => {
-              setLoading(true);
-              const { data, error } = await supabase
-                .from("rsvps")
-                .select("id,first_name,last_name,phone,guests,kids,kids_count,notes,created_at")
-                .order("created_at", { ascending: false });
-              setLoading(false);
-              if (error) return console.error(error);
-              setRows((data as RSVPRow[]) || []);
-            }}
-            style={btn}
+          <motion.div
+            className="glassCard loginCard"
+            initial={{ opacity: 0, y: 18, scale: 0.99, filter: "blur(10px)" }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+            transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
           >
-            Actualizar
-          </button>
+            <div className="cardTitle">Iniciar sesión</div>
+
+            <form onSubmit={signIn} className="form">
+              <label className="label">Email</label>
+              <input
+                className="input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@correo.com"
+                type="email"
+                autoComplete="email"
+              />
+
+              <label className="label" style={{ marginTop: 12 }}>
+                Password
+              </label>
+              <input
+                className="input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                type="password"
+                autoComplete="current-password"
+              />
+
+              <button className="btnPrimary" type="submit" style={{ marginTop: 14 }}>
+                Entrar
+              </button>
+
+              {errMsg ? <div className="errorBox">Error: {errMsg}</div> : null}
+
+              <div className="hint">
+                *Este acceso solo es para administradores (Supabase Auth).
+              </div>
+            </form>
+          </motion.div>
         </div>
 
+        <Toast toast={toast} />
+      </>
+    );
+  }
+
+  // =========================
+  // ADMIN UI
+  // =========================
+  return (
+    <>
+      <style>{fontsCss}</style>
+      <style>{styles}</style>
+
+      <div className="appBg" />
+
+      {/* Header sticky */}
+      <div className="topBar">
+        <div className="topBarInner">
+          <div className="brandMini">
+            <div className="brandCaps">Admin RSVP</div>
+            <div className="brandScriptSm">Junior & Glenny</div>
+          </div>
+
+          <div className="topActions">
+            <button className="btnGhost" onClick={() => load()}>
+              {loading ? "..." : "Actualizar"}
+            </button>
+            <button className="btnDanger" onClick={signOut}>
+              Salir
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="appShell withTopBar">
+        {/* Stats cards */}
+        <motion.div
+          className="statsGrid"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <StatCard label="Confirmaciones" value={totals.totalConfirmed} />
+          <StatCard label="Personas" value={totals.totalGuests} />
+          <StatCard label="Niños" value={totals.totalKids} />
+          <StatCard label="Con niños" value={totals.totalWithKids} />
+        </motion.div>
+
+        {/* Search + filter */}
+        <div className="tools">
+          <div className="searchWrap">
+            <span className="searchIcon">⌕</span>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar por nombre o teléfono..."
+              className="searchInput"
+            />
+            {q ? (
+              <button className="xBtn" onClick={() => setQ("")} aria-label="Limpiar búsqueda">
+                ✕
+              </button>
+            ) : null}
+          </div>
+
+          <div className="filterRow">
+            <Chip on={filter === "all"} onClick={() => setFilter("all")}>
+              Todos
+            </Chip>
+            <Chip on={filter === "kids"} onClick={() => setFilter("kids")}>
+              Con niños
+            </Chip>
+            <Chip on={filter === "no_kids"} onClick={() => setFilter("no_kids")}>
+              Sin niños
+            </Chip>
+          </div>
+        </div>
+
+        {errMsg ? <div className="errorBox">Error: {errMsg}</div> : null}
+
+        {/* List */}
         <AnimatePresence>
           {loading ? (
             <motion.div
-              style={card}
+              className="glassCard centerCard"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
             >
               Cargando...
             </motion.div>
+          ) : filtered.length === 0 ? (
+            <motion.div
+              className="glassCard centerCard"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+            >
+              No hay confirmaciones.
+            </motion.div>
           ) : (
             <motion.div
-              style={list}
+              className="list"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              {filtered.length === 0 ? (
-                <div style={card}>No hay confirmaciones todavía.</div>
-              ) : (
-                filtered.map((r, i) => (
-                  <motion.div
-                    key={(r.id || "") + i}
-                    style={card}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: Math.min(i * 0.02, 0.2) }}
-                  >
-                    <div style={rowTop}>
-                      <div style={name}>
+              {filtered.map((r, idx) => (
+                <motion.button
+                  key={r.id}
+                  className="rowCard"
+                  onClick={() => setSelected(r)}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(idx * 0.02, 0.18) }}
+                >
+                  <div className="rowTop">
+                    <div className="avatar">{initials(r.first_name, r.last_name)}</div>
+
+                    <div className="rowMain">
+                      <div className="rowName">
                         {r.first_name} {r.last_name}
                       </div>
-                      <div style={meta}>
-                        {r.created_at ? new Date(r.created_at).toLocaleString() : ""}
+                      <div className="rowSub">
+                        <span className="mono">{r.phone}</span>
+                        <span className="dotSep">•</span>
+                        <span className="muted">{fmtDate(r.created_at)}</span>
                       </div>
                     </div>
 
-                    <div style={grid}>
-                      <Info label="Teléfono" value={r.phone} />
-                      <Info label="Personas" value={String(r.guests)} />
-                      <Info label="Niños" value={String(r.kids_count || 0)} />
-                      <Info label="Kids?" value={r.kids ? "Sí" : "No"} />
+                    <div className="rowRight">
+                      <div className="idPill">#{r.id.slice(0, 6)}</div>
                     </div>
+                  </div>
 
-                    {r.notes ? <div style={notes}>Nota: {r.notes}</div> : null}
-                  </motion.div>
-                ))
-              )}
+                  <div className="chips">
+                    <Tag>
+                      👥 {Number(r.guests_count) || 0} {Number(r.guests_count) === 1 ? "persona" : "personas"}
+                    </Tag>
+                    <Tag>🧒 {Number(r.kids_count) || 0} niños</Tag>
+                    {(Number(r.kids_count) || 0) > 0 ? <Tag className="tagOk">Kids ✓</Tag> : <Tag className="tagOff">No kids</Tag>}
+                  </div>
+                </motion.button>
+              ))}
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Bottom bar (mobile) */}
+        <div className="bottomBar">
+          <button className="bottomBtn" onClick={() => load()}>
+            <span className="bottomIco">↻</span>
+            <span className="bottomTxt">{loading ? "..." : "Actualizar"}</span>
+          </button>
+          <button
+            className="bottomBtn"
+            onClick={() => copy(String(totals.totalGuests), "Total de personas copiado")}
+          >
+            <span className="bottomIco">⎘</span>
+            <span className="bottomTxt">Copiar total</span>
+          </button>
+          <button className="bottomBtn danger" onClick={signOut}>
+            <span className="bottomIco">⇥</span>
+            <span className="bottomTxt">Salir</span>
+          </button>
+        </div>
       </div>
+
+      {/* Modal detalle */}
+      <AnimatePresence>
+        {selected ? (
+          <motion.div
+            className="modalOverlay"
+            onClick={() => setSelected(null)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="modal"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, y: 18, scale: 0.98, filter: "blur(12px)" }}
+              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: 18, scale: 0.98, filter: "blur(12px)" }}
+              transition={{ duration: 0.35, ease: [0.2, 0.8, 0.2, 1] }}
+            >
+              <div className="modalHead">
+                <div className="modalTitle">
+                  <div className="avatar big">{initials(selected.first_name, selected.last_name)}</div>
+                  <div>
+                    <div className="rowName" style={{ fontSize: 14 }}>
+                      {selected.first_name} {selected.last_name}
+                    </div>
+                    <div className="rowSub">
+                      <span className="mono">{selected.phone}</span>
+                      <span className="dotSep">•</span>
+                      <span className="muted">{fmtDate(selected.created_at)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button className="xBtn2" onClick={() => setSelected(null)} aria-label="Cerrar">
+                  ✕
+                </button>
+              </div>
+
+              <div className="modalGrid">
+                <div className="miniCard">
+                  <div className="miniLbl">Personas</div>
+                  <div className="miniVal">{Number(selected.guests_count) || 0}</div>
+                </div>
+                <div className="miniCard">
+                  <div className="miniLbl">Niños</div>
+                  <div className="miniVal">{Number(selected.kids_count) || 0}</div>
+                </div>
+                <div className="miniCard">
+                  <div className="miniLbl">ID</div>
+                  <div className="miniVal mono">#{selected.id.slice(0, 8)}</div>
+                </div>
+              </div>
+
+              <div className="modalActions">
+                <button className="btnGhost" onClick={() => copy(selected.phone, "Teléfono copiado")}>
+                  Copiar teléfono
+                </button>
+                <button className="btnPrimary" onClick={() => copy(selected.id, "ID copiado")}>
+                  Copiar ID
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <Toast toast={toast} />
     </>
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+/* ===================== Components ===================== */
+
+function Chip({
+  on,
+  children,
+  onClick,
+}: {
+  on: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
   return (
-    <div style={stat}>
-      <div style={statVal}>{value}</div>
-      <div style={statLbl}>{label}</div>
-    </div>
-  );
-}
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={info}>
-      <div style={infoLbl}>{label}</div>
-      <div style={infoVal}>{value}</div>
-    </div>
+    <button className={`chip ${on ? "on" : ""}`} onClick={onClick}>
+      {children}
+    </button>
   );
 }
 
-const pageBg: React.CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  zIndex: -1,
+function Tag({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`tag ${className}`}>{children}</div>;
+}
+
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <motion.div
+      className="statCard"
+      initial={{ opacity: 0, y: 10, scale: 0.99 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.35 }}
+      whileHover={{ y: -2 }}
+    >
+      <div className="statVal">{value}</div>
+      <div className="statLbl">{label}</div>
+    </motion.div>
+  );
+}
+
+function Toast({ toast }: { toast: { type: "ok" | "err"; msg: string } | null }) {
+  return (
+    <AnimatePresence>
+      {toast ? (
+        <motion.div
+          className={`toast ${toast.type}`}
+          initial={{ opacity: 0, y: 10, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        >
+          {toast.msg}
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+/* ===================== Fonts ===================== */
+
+const fontsCss = `
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Great+Vibes&display=swap');
+`;
+
+/* ===================== Styles ===================== */
+
+const styles = `
+:root{
+  --ink:#02020B;
+  --navy:#0D1546;
+  --fog:#EEF2F8;
+  --paper:#FBFBFD;
+  --sand:#D6B37A;
+  --border: rgba(13,21,70,.14);
+  --shadow: 0 18px 60px rgba(2,2,11,.14);
+}
+
+*{ box-sizing:border-box; }
+html, body{ height:100%; }
+body{
+  margin:0;
+  background:#f6f7fb;
+  color: rgba(13,21,70,.92);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+/* Background */
+.appBg{
+  position:fixed; inset:0; z-index:-5;
   background:
-    "radial-gradient(900px 520px at 12% 8%, rgba(119,154,191,.18) 0%, transparent 70%)," +
-    "radial-gradient(900px 520px at 88% 12%, rgba(82,113,161,.18) 0%, transparent 70%)," +
-    "linear-gradient(180deg, rgba(255,255,255,.92), rgba(246,247,251,.92))",
-};
+    radial-gradient(900px 520px at 12% 8%, rgba(119,154,191,.18) 0%, transparent 70%),
+    radial-gradient(900px 520px at 88% 12%, rgba(82,113,161,.18) 0%, transparent 70%),
+    radial-gradient(900px 520px at 50% 100%, rgba(45,72,130,.12) 0%, transparent 70%),
+    linear-gradient(180deg, rgba(255,255,255,.92), rgba(246,247,251,.92));
+}
 
-const wrap: React.CSSProperties = {
-  width: "min(980px, 92vw)",
-  margin: "22px auto 28px",
-  fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
-  color: "rgba(13,21,70,.88)",
-};
+/* Layout */
+.appShell{
+  width: min(1020px, 94vw);
+  margin: 0 auto;
+  padding: 16px 0 96px;
+}
+.withTopBar{ padding-top: 76px; }
 
-const header: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 16,
-  alignItems: "flex-end",
-  flexWrap: "wrap",
-};
+.heroTop{ padding-top: 20px; }
+.brandCaps{
+  font-family: Cinzel, serif;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 12px;
+}
+.brandScript{
+  margin-top: 10px;
+  font-family: "Great Vibes", cursive;
+  font-size: 48px;
+  color: rgba(13,21,70,.80);
+  line-height: 1;
+}
+.brandMini .brandScriptSm{
+  margin-top: 6px;
+  font-family: "Great Vibes", cursive;
+  font-size: 26px;
+  line-height: 1;
+  color: rgba(13,21,70,.78);
+}
 
-const title: React.CSSProperties = {
-  fontFamily: "Cinzel, serif",
-  letterSpacing: ".18em",
-  textTransform: "uppercase",
-  fontWeight: 600,
-  fontSize: 14,
-};
+/* TopBar */
+.topBar{
+  position: sticky;
+  top: 0;
+  z-index: 2000;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255,255,255,.60);
+  border-bottom: 1px solid rgba(13,21,70,.10);
+}
+.topBarInner{
+  width: min(1020px, 94vw);
+  margin: 0 auto;
+  padding: 12px 0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+}
 
-const sub: React.CSSProperties = {
-  marginTop: 8,
-  fontFamily: "Great Vibes, cursive",
-  fontSize: 36,
-  color: "rgba(13,21,70,.78)",
-};
+/* Cards */
+.glassCard{
+  border: 1px solid rgba(13,21,70,.12);
+  background: rgba(255,255,255,.82);
+  box-shadow: var(--shadow);
+  border-radius: 22px;
+  padding: 16px;
+}
+.centerCard{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  min-height: 88px;
+}
+.loginCard{ margin-top: 12px; max-width: 520px; }
+.cardTitle{
+  font-family: Cinzel, serif;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-size: 11px;
+  opacity: .9;
+}
 
-const statsRow: React.CSSProperties = {
-  display: "flex",
-  gap: 12,
-  flexWrap: "wrap",
-};
+/* Form */
+.form{ margin-top: 12px; }
+.label{
+  font-family: Cinzel, serif;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-size: 10px;
+  opacity: .75;
+}
+.input{
+  width:100%;
+  margin-top: 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(13,21,70,.12);
+  background: rgba(255,255,255,.86);
+  padding: 12px 12px;
+  outline:none;
+  box-shadow: 0 10px 26px rgba(2,2,11,.06);
+  font-size: 14px;
+}
+.hint{ margin-top: 10px; font-size: 12px; opacity: .75; }
 
-const stat: React.CSSProperties = {
-  border: "1px solid rgba(13,21,70,.12)",
-  background: "rgba(255,255,255,.78)",
-  boxShadow: "0 14px 40px rgba(2,2,11,.10)",
-  borderRadius: 18,
-  padding: "12px 14px",
-  minWidth: 140,
-  textAlign: "center",
-};
+/* Tools */
+.tools{ margin-top: 14px; display:grid; gap: 10px; }
+.searchWrap{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(13,21,70,.12);
+  background: rgba(255,255,255,.82);
+  box-shadow: 0 16px 44px rgba(2,2,11,.10);
+  padding: 12px 12px;
+}
+.searchIcon{ opacity:.65; font-size: 14px; }
+.searchInput{
+  flex:1;
+  border:0;
+  outline:none;
+  background: transparent;
+  font-size: 14px;
+  color: rgba(13,21,70,.92);
+}
+.xBtn{
+  border: 0;
+  background: rgba(13,21,70,.06);
+  border-radius: 999px;
+  width: 34px;
+  height: 34px;
+  cursor:pointer;
+}
+.xBtn2{
+  border: 1px solid rgba(13,21,70,.12);
+  background: rgba(255,255,255,.76);
+  border-radius: 999px;
+  width: 40px;
+  height: 40px;
+  cursor:pointer;
+  box-shadow: 0 10px 26px rgba(2,2,11,.08);
+}
+.filterRow{ display:flex; gap: 10px; flex-wrap: wrap; }
 
-const statVal: React.CSSProperties = {
-  fontFamily: "Cinzel, serif",
-  fontWeight: 600,
-  letterSpacing: ".06em",
-  fontSize: 22,
-};
+/* Chips */
+.chip{
+  border-radius: 999px;
+  border: 1px solid rgba(13,21,70,.12);
+  background: rgba(255,255,255,.80);
+  padding: 10px 12px;
+  cursor:pointer;
+  font-size: 12px;
+  box-shadow: 0 12px 28px rgba(2,2,11,.08);
+}
+.chip.on{
+  border-color: rgba(214,179,122,.70);
+  background: rgba(230,208,169,.26);
+}
 
-const statLbl: React.CSSProperties = {
-  marginTop: 6,
-  fontFamily: "Cinzel, serif",
-  fontSize: 10,
-  letterSpacing: ".14em",
-  textTransform: "uppercase",
-  opacity: 0.75,
-};
+/* Stats */
+.statsGrid{
+  margin-top: 10px;
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.statCard{
+  border-radius: 20px;
+  border: 1px solid rgba(13,21,70,.10);
+  background: rgba(255,255,255,.82);
+  box-shadow: 0 16px 44px rgba(2,2,11,.10);
+  padding: 14px 12px;
+}
+.statVal{
+  font-family: Cinzel, serif;
+  font-weight: 600;
+  letter-spacing: .06em;
+  font-size: 22px;
+}
+.statLbl{
+  margin-top: 8px;
+  font-family: Cinzel, serif;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-size: 9px;
+  opacity:.75;
+}
 
-const toolbar: React.CSSProperties = {
-  marginTop: 16,
-  display: "flex",
-  gap: 10,
-  alignItems: "center",
-  flexWrap: "wrap",
-};
+/* List */
+.list{ margin-top: 14px; display:grid; gap: 12px; }
+.rowCard{
+  text-align:left;
+  width:100%;
+  border: 1px solid rgba(13,21,70,.10);
+  background: rgba(255,255,255,.84);
+  box-shadow: 0 18px 56px rgba(2,2,11,.10);
+  border-radius: 22px;
+  padding: 14px;
+  cursor:pointer;
+}
+.rowCard:active{ transform: scale(.995); }
 
-const search: React.CSSProperties = {
-  flex: 1,
-  minWidth: 240,
-  borderRadius: 14,
-  border: "1px solid rgba(13,21,70,.12)",
-  padding: "12px 12px",
-  background: "rgba(255,255,255,.85)",
-  outline: "none",
-  boxShadow: "0 10px 26px rgba(2,2,11,.06)",
-};
+.rowTop{ display:flex; gap: 12px; align-items:center; }
+.avatar{
+  width: 46px; height: 46px;
+  border-radius: 16px;
+  display:grid; place-items:center;
+  background: rgba(255,255,255,.82);
+  border: 1px solid rgba(13,21,70,.10);
+  font-family: Cinzel, serif;
+  font-weight: 600;
+  letter-spacing: .10em;
+  box-shadow: 0 14px 36px rgba(2,2,11,.10);
+}
+.avatar.big{
+  width: 52px; height: 52px;
+  border-radius: 18px;
+}
 
-const btn: React.CSSProperties = {
-  borderRadius: 999,
-  border: "1px solid rgba(214,179,122,.55)",
-  background: "rgba(255,255,255,.78)",
-  padding: "12px 14px",
-  cursor: "pointer",
-  fontFamily: "Cinzel, serif",
-  letterSpacing: ".14em",
-  textTransform: "uppercase",
-  fontSize: 10,
-  color: "rgba(13,21,70,.85)",
-};
+.rowMain{ flex: 1; min-width: 0; }
+.rowName{
+  font-family: Cinzel, serif;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1.2;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rowSub{
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: .85;
+  display:flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items:center;
+}
+.dotSep{ opacity:.5; }
+.muted{ opacity:.72; }
+.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 
-const list: React.CSSProperties = {
-  marginTop: 16,
-  display: "grid",
-  gap: 12,
-};
+.rowRight{ display:flex; justify-content:flex-end; }
+.idPill{
+  font-size: 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(13,21,70,.12);
+  padding: 8px 10px;
+  background: rgba(255,255,255,.78);
+  opacity:.85;
+}
 
-const card: React.CSSProperties = {
-  border: "1px solid rgba(13,21,70,.12)",
-  background: "rgba(255,255,255,.82)",
-  boxShadow: "0 14px 40px rgba(2,2,11,.10)",
-  borderRadius: 22,
-  padding: "14px 14px",
-};
+/* Tags */
+.chips{ margin-top: 12px; display:flex; flex-wrap: wrap; gap: 8px; }
+.tag{
+  border-radius: 999px;
+  border: 1px solid rgba(13,21,70,.12);
+  background: rgba(255,255,255,.78);
+  padding: 8px 10px;
+  font-size: 12px;
+  box-shadow: 0 12px 28px rgba(2,2,11,.06);
+}
+.tagOk{ border-color: rgba(214,179,122,.75); background: rgba(230,208,169,.22); }
+.tagOff{ opacity: .75; }
 
-const rowTop: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  alignItems: "baseline",
-  flexWrap: "wrap",
-};
+/* Buttons */
+.topActions{ display:flex; gap: 10px; align-items:center; }
+.btnPrimary{
+  border: 1px solid rgba(214,179,122,.70);
+  background: rgba(255,255,255,.76);
+  color: rgba(13,21,70,.88);
+  font-family: Cinzel, serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-size: 10px;
+  padding: 12px 14px;
+  border-radius: 999px;
+  cursor:pointer;
+  box-shadow: 0 16px 44px rgba(2,2,11,.10);
+}
+.btnPrimary:active{ transform: scale(.99); }
+.btnGhost{
+  border: 1px solid rgba(13,21,70,.12);
+  background: rgba(255,255,255,.76);
+  color: rgba(13,21,70,.86);
+  font-family: Cinzel, serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-size: 10px;
+  padding: 12px 14px;
+  border-radius: 999px;
+  cursor:pointer;
+}
+.btnDanger{
+  border: 1px solid rgba(220,80,80,.35);
+  background: rgba(255,255,255,.76);
+  color: rgba(140,20,20,.92);
+  font-family: Cinzel, serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-size: 10px;
+  padding: 12px 14px;
+  border-radius: 999px;
+  cursor:pointer;
+}
 
-const name: React.CSSProperties = {
-  fontFamily: "Cinzel, serif",
-  letterSpacing: ".10em",
-  textTransform: "uppercase",
-  fontWeight: 600,
-  fontSize: 12,
-};
+/* Bottom bar */
+.bottomBar{
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 2200;
+  padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+  background: rgba(255,255,255,.72);
+  border-top: 1px solid rgba(13,21,70,.10);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display:none;
+}
+.bottomBtn{
+  flex:1;
+  border: 1px solid rgba(13,21,70,.10);
+  background: rgba(255,255,255,.84);
+  border-radius: 16px;
+  padding: 10px 10px;
+  cursor:pointer;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap: 8px;
+  box-shadow: 0 14px 36px rgba(2,2,11,.10);
+}
+.bottomBtn.danger{ border-color: rgba(220,80,80,.28); }
+.bottomIco{ font-size: 14px; opacity:.85; }
+.bottomTxt{
+  font-family: Cinzel, serif;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  font-size: 9px;
+  opacity:.9;
+}
 
-const meta: React.CSSProperties = {
-  fontSize: 12,
-  opacity: 0.7,
-};
+/* Modal */
+.modalOverlay{
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(2,2,11,.35);
+  display:flex;
+  justify-content:center;
+  align-items:flex-end;
+  padding: 14px;
+}
+.modal{
+  width: min(720px, 100%);
+  border-radius: 24px;
+  border: 1px solid rgba(13,21,70,.12);
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 22px 70px rgba(2,2,11,.20);
+  padding: 14px;
+  max-height: 78vh;
+  overflow:auto;
+}
+.modalHead{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap: 10px;
+}
+.modalTitle{ display:flex; gap: 12px; align-items:center; }
+.modalGrid{
+  margin-top: 12px;
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.miniCard{
+  border-radius: 18px;
+  border: 1px solid rgba(13,21,70,.10);
+  background: rgba(255,255,255,.84);
+  padding: 12px;
+}
+.miniLbl{
+  font-family: Cinzel, serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-size: 9px;
+  opacity: .75;
+}
+.miniVal{
+  margin-top: 8px;
+  font-weight: 700;
+  font-size: 14px;
+}
+.modalActions{
+  margin-top: 12px;
+  display:flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content:flex-end;
+}
 
-const grid: React.CSSProperties = {
-  marginTop: 10,
-  display: "grid",
-  gridTemplateColumns: "repeat(4, minmax(140px, 1fr))",
-  gap: 10,
-};
+/* Toast */
+.toast{
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 86px;
+  z-index: 4000;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 12px;
+  border: 1px solid rgba(13,21,70,.12);
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 18px 60px rgba(2,2,11,.18);
+}
+.toast.ok{ border-color: rgba(214,179,122,.55); }
+.toast.err{ border-color: rgba(220,80,80,.35); }
 
-const info: React.CSSProperties = {
-  border: "1px solid rgba(13,21,70,.10)",
-  borderRadius: 16,
-  padding: "10px 10px",
-  background: "rgba(255,255,255,.70)",
-};
+.errorBox{
+  margin-top: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(220,80,80,.35);
+  background: rgba(255,255,255,.85);
+  padding: 12px;
+  box-shadow: 0 14px 36px rgba(2,2,11,.08);
+  font-size: 12px;
+}
 
-const infoLbl: React.CSSProperties = {
-  fontFamily: "Cinzel, serif",
-  letterSpacing: ".14em",
-  textTransform: "uppercase",
-  fontSize: 10,
-  opacity: 0.75,
-};
-
-const infoVal: React.CSSProperties = {
-  marginTop: 8,
-  fontWeight: 600,
-};
-
-const notes: React.CSSProperties = {
-  marginTop: 10,
-  fontSize: 12,
-  opacity: 0.85,
-};
+/* Responsive */
+@media (max-width: 980px){
+  .statsGrid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px){
+  .appShell{ padding-left: 2px; padding-right: 2px; }
+  .withTopBar{ padding-top: 74px; }
+  .bottomBar{ display:flex; gap: 10px; }
+  .topActions{ display:none; } /* en móvil usamos bottom bar */
+  .brandScript{ font-size: 44px; }
+  .modalOverlay{ align-items:flex-end; }
+  .modalGrid{ grid-template-columns: 1fr; }
+}
+`;
