@@ -461,6 +461,7 @@ function SectionDivider() {
 function clamp01(n: number) {
   return Math.max(0, Math.min(1, n));
 }
+
 function avgRange(data: Uint8Array, from: number, to: number) {
   const a = Math.max(0, from);
   const b = Math.min(data.length - 1, to);
@@ -472,6 +473,7 @@ function avgRange(data: Uint8Array, from: number, to: number) {
   }
   return count ? sum / count / 255 : 0;
 }
+
 function useAudioReactiveCSS(audioRef: React.RefObject<HTMLAudioElement | null>, enabled: boolean) {
   const ctxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -562,7 +564,6 @@ function useAudioReactiveCSS(audioRef: React.RefObject<HTMLAudioElement | null>,
 
     rafRef.current = requestAnimationFrame(tick);
     return () => stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 }
 
