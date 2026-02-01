@@ -778,7 +778,6 @@ export default function Invite() {
 
       {/* Background */}
       <div className="bg" />
-      <div className="rippleWall" aria-hidden="true" />
       <div className="paperTex" />
       <div className="grain" aria-hidden="true" />
       <div className="audioDebug" aria-hidden="true">
@@ -1421,127 +1420,6 @@ body{
   mix-blend-mode: screen;
   animation: bgFloat 9s ease-in-out infinite;
 }
-
-/* =======================
-   RIPPLE WALL (ondas de agua)
-   - Concentric rings like your image
-   - Origin at bottom, rise upward
-   - Driven by --pulse/--bass/--mid/--treble
-   ======================= */
-.rippleWall{
-  position: fixed;
-  inset: 0;
-  z-index: 1;           /* bg=0, ripple=1, paperTex=2, grain=3 */
-  pointer-events: none;
-
-  /* para que el efecto “nazca” abajo y se desvanezca arriba */
-  -webkit-mask-image: linear-gradient(to top,
-    rgba(0,0,0,1) 0%,
-    rgba(0,0,0,1) 42%,
-    rgba(0,0,0,.0) 78%);
-          mask-image: linear-gradient(to top,
-    rgba(0,0,0,1) 0%,
-    rgba(0,0,0,1) 42%,
-    rgba(0,0,0,.0) 78%);
-
-  opacity: 1;
-}
-
-/* Capa principal: anillos concéntricos (tipo la imagen) */
-.rippleWall::before{
-  content:"";
-  position:absolute;
-  inset:-22% -12%;
-  transform: translate3d(0,0,0);
-
-  /* 🔥 MULTI-CENTROS DE ONDA (varios puntos en la “pared”) */
-  background:
-    /* centro 1 */
-    repeating-radial-gradient(
-      circle at 22% 116%,
-      rgba(82,113,161, calc(.06 + var(--pulse)*.28)) 0 2px,
-      rgba(82,113,161, calc(.02 + var(--pulse)*.10)) 2px 6px,
-      transparent 6px 18px
-    ),
-    /* centro 2 */
-    repeating-radial-gradient(
-      circle at 52% 118%,
-      rgba(255,255,255, calc(.03 + var(--treble)*.12)) 0 2px,
-      rgba(82,113,161, calc(.02 + var(--pulse)*.12)) 2px 7px,
-      transparent 7px 20px
-    ),
-    /* centro 3 */
-    repeating-radial-gradient(
-      circle at 82% 116%,
-      rgba(13,21,70, calc(.06 + var(--mid)*.22)) 0 2px,
-      rgba(82,113,161, calc(.02 + var(--pulse)*.12)) 2px 6px,
-      transparent 6px 18px
-    );
-
-  /* “Golpe” desde abajo hacia arriba:
-     - translateY baja/sube con el audio
-     - scale da sensación de expansión */
-  transform:
-    translateY(calc( 220px - (var(--bass) * 520px) ))
-    scale(calc(1.02 + var(--pulse)*.06));
-
-  /* hace los anillos más suaves y acuosos */
-  filter:
-    blur(calc(10px - var(--pulse)*3px))
-    saturate(calc(1.05 + var(--treble)*.55))
-    contrast(calc(1.05 + var(--bass)*.20));
-
-  opacity: calc(.20 + var(--pulse)*.70);
-  mix-blend-mode: screen;
-
-  animation: rippleDrift 3.2s ease-in-out infinite;
-}
-
-/* Glow acuoso que acompaña a los anillos (para que se sienta “agua” y no “gráfico”) */
-.rippleWall::after{
-  content:"";
-  position:absolute;
-  inset:-18% -10%;
-  transform: translate3d(0,0,0);
-
-  background:
-    radial-gradient(900px 520px at 50% 112%,
-      rgba(82,113,161, calc(.10 + var(--bass)*.40)) 0%,
-      transparent 70%),
-    radial-gradient(720px 420px at 20% 112%,
-      rgba(13,21,70, calc(.08 + var(--mid)*.35)) 0%,
-      transparent 72%),
-    radial-gradient(720px 420px at 80% 112%,
-      rgba(82,113,161, calc(.06 + var(--treble)*.30)) 0%,
-      transparent 72%);
-
-  transform:
-    translateY(calc( 260px - (var(--pulse) * 420px) ))
-    scale(calc(1.00 + var(--pulse)*.03));
-
-  filter:
-    blur(18px)
-    hue-rotate(calc(-6deg + var(--treble)*18deg))
-    brightness(calc(.98 + var(--pulse)*.12));
-
-  opacity: calc(.18 + var(--pulse)*.55);
-  mix-blend-mode: screen;
-
-  animation: rippleSweep 4.0s ease-in-out infinite;
-}
-
-@keyframes rippleDrift{
-  0%   { background-position: 0% 0%, 0% 0%, 0% 0%; }
-  50%  { background-position: 10% 0%, -8% 0%, 6% 0%; }
-  100% { background-position: 0% 0%, 0% 0%, 0% 0%; }
-}
-
-@keyframes rippleSweep{
-  0%   { background-position: 0% 0%, 0% 0%, 0% 0%; }
-  50%  { background-position: 6% 0%, -6% 0%, 4% 0%; }
-  100% { background-position: 0% 0%, 0% 0%, 0% 0%; }
-}
-
 
 .paperTex{
   position:fixed; inset:0; z-index:2;
