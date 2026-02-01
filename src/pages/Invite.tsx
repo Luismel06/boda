@@ -1116,7 +1116,7 @@ export default function Invite() {
 
           {/* 6) RSVP (REDISEÑO) */}
           <SheetSection id="rsvp" watermark={WEDDING.initials}>
-            <HeaderScript title="Confirmación de asistencia" subtitle="Por favor confirma tu asistencia llenando este formulario." />
+            <HeaderScript title="Confirmación" subtitle="Por favor confirma tu asistencia llenando este formulario." />
 
             <div className="rsvpShell">
               <form className="form" onSubmit={submitRSVP}>
