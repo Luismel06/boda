@@ -818,21 +818,7 @@ export default function Invite() {
           ))}
         </nav>
 
-        {/* Floating chips */}
-        <div className={`floating ${floatingMode === "dark" ? "floatingDark" : "floatingLight"}`}>
-          <button className="chip" onClick={toggleMusic} type="button" title="Música">
-            <span className="chipDot" data-on={musicOn ? "1" : "0"} />
-            {musicOn ? "Música" : "Sonido"}
-          </button>
 
-          <button className="chip" onClick={() => scrollToId("nuestra-boda")} type="button" title="Ver invitación">
-            Ver invitación ↓
-          </button>
-
-          <button className="chip" onClick={addToCalendarICS} type="button" title="Agregar al calendario">
-            Agregar al calendario
-          </button>
-        </div>
 
         {/* =======================
             HERO (NO TOCAR)
