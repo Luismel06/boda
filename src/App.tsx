@@ -1,5 +1,4 @@
 // App.jsx
-import React from "react";
 import { Routes, Route } from "react-router-dom";
 import Portal2D from "./pages/Portal";
 import Invite from "./pages/Invite";

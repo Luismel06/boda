@@ -5,7 +5,7 @@ import { useMusic } from "../music/MusicProvider";
 
 type Phase = "idle" | "video" | "ready" | "leaving";
 
-export default function PortalCarta(): JSX.Element {
+export default function PortalCarta() {
   const navigate = useNavigate();
   const music = useMusic();
 
@@ -198,7 +198,7 @@ export default function PortalCarta(): JSX.Element {
   );
 }
 
-const styles = (bgImg: string, exitFadeMs: number) => `
+const styles = (bgImg: string,) => `
 *{ box-sizing:border-box; }
 html,body{ height:100%; }
 body{ margin:0; background:#000; }

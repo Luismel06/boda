@@ -472,7 +472,7 @@ function avgRange(data: Uint8Array, from: number, to: number) {
   }
   return count ? sum / count / 255 : 0;
 }
-function useAudioReactiveCSS(audioRef: React.RefObject<HTMLAudioElement>, enabled: boolean) {
+function useAudioReactiveCSS(audioRef: React.RefObject<HTMLAudioElement | null>, enabled: boolean) {
   const ctxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
