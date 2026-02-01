@@ -458,11 +458,14 @@ function SectionDivider() {
  *  Audio reactive background (WebAudio)
  *  (lo mantengo, pero adaptado a tema blanco/azul)
  *  ======================= */
+/** =======================
+ *  Audio reactive background (WebAudio)
+ *  ======================= */
 function clamp01(n: number) {
   return Math.max(0, Math.min(1, n));
 }
 
-function avgRange(data: Uint8Array, from: number, to: number) {
+function avgRange(data: Uint8Array<ArrayBuffer>, from: number, to: number) {
   const a = Math.max(0, from);
   const b = Math.min(data.length - 1, to);
   let sum = 0;
@@ -479,12 +482,24 @@ function useAudioReactiveCSS(audioRef: React.RefObject<HTMLAudioElement | null>,
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
 
-  // ✅ aquí el cambio
+  // ✅ tipado para que getByteFrequencyData no dé conflicto
   const dataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
 
   const rafRef = useRef<number | null>(null);
 
-  // ...
+  const setVars = (pulse: number, bass: number, mid: number, treble: number) => {
+    const root = document.documentElement;
+    root.style.setProperty("--pulse", String(clamp01(pulse)));
+    root.style.setProperty("--bass", String(clamp01(bass)));
+    root.style.setProperty("--mid", String(clamp01(mid)));
+    root.style.setProperty("--treble", String(clamp01(treble)));
+  };
+
+  const stop = () => {
+    if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    setVars(0, 0, 0, 0);
+  };
 
   const ensure = () => {
     const a = audioRef.current;
@@ -504,7 +519,7 @@ function useAudioReactiveCSS(audioRef: React.RefObject<HTMLAudioElement | null>,
     source.connect(analyser);
     analyser.connect(ctx.destination);
 
-    // ✅ aquí el cambio
+    // ✅ fuerza ArrayBuffer (no ArrayBufferLike)
     const data = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
 
     ctxRef.current = ctx;
@@ -513,7 +528,50 @@ function useAudioReactiveCSS(audioRef: React.RefObject<HTMLAudioElement | null>,
     dataRef.current = data;
   };
 
-  // ...
+  useEffect(() => {
+    if (!enabled) {
+      stop();
+      return;
+    }
+
+    ensure();
+
+    const ctx = ctxRef.current;
+    const analyser = analyserRef.current;
+    const data = dataRef.current;
+    if (!ctx || !analyser || !data) return;
+
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+
+    let sp = 0,
+      sb = 0,
+      sm = 0,
+      st = 0;
+
+    const tick = () => {
+      // ✅ ya coincide con el tipo
+      analyser.getByteFrequencyData(data);
+
+      const bass = avgRange(data, 0, 22);
+      const mid = avgRange(data, 23, 90);
+      const treble = avgRange(data, 91, 180);
+
+      const pulseRaw = clamp01(bass * 0.85 + mid * 0.25);
+
+      sp = sp + (pulseRaw - sp) * 0.08;
+      sb = sb + (bass - sb) * 0.08;
+      sm = sm + (mid - sm) * 0.06;
+      st = st + (treble - st) * 0.05;
+
+      setVars(sp, sb, sm, st);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => stop();
+  }, [enabled]);
 }
 
 /** =======================
