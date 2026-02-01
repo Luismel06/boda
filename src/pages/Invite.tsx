@@ -461,22 +461,6 @@ function SectionDivider() {
 /** =======================
  *  Audio reactive background (WebAudio)
  *  ======================= */
-function clamp01(n: number) {
-  return Math.max(0, Math.min(1, n));
-}
-
-function avgRange(data: Uint8Array<ArrayBuffer>, from: number, to: number) {
-  const a = Math.max(0, from);
-  const b = Math.min(data.length - 1, to);
-  let sum = 0;
-  let count = 0;
-  for (let i = a; i <= b; i++) {
-    sum += data[i];
-    count++;
-  }
-  return count ? sum / count / 255 : 0;
-}
-
 
 
 /** =======================
