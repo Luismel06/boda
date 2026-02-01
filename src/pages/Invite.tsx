@@ -546,7 +546,13 @@ export default function Invite() {
     return () => window.clearTimeout(t);
   }, []);
 
-
+  /** ✅ Floating buttons contrast */
+  const [floatingMode, setFloatingMode] = useState<"light" | "dark">("light");
+  useMotionValueEvent(scrollY, "change", (y) => {
+    const heroH = heroRef.current?.clientHeight ?? window.innerHeight;
+    const inHero = y < heroH - 80;
+    setFloatingMode(inHero ? "light" : "dark");
+  });
 
   /** Countdown */
   const [count, setCount] = useState({ d: 0, h: 0, m: 0, s: 0 });
@@ -605,6 +611,26 @@ export default function Invite() {
     a.addEventListener("canplay", onCanPlay);
     return () => a.removeEventListener("canplay", onCanPlay);
   }, []);
+
+
+
+  const toggleMusic = async () => {
+    const a = audioRef.current;
+    if (!a) return;
+
+    try {
+      if (!musicOn) {
+        a.muted = false;
+        await a.play();
+        setMusicOn(true);
+      } else {
+        a.pause();
+        setMusicOn(false);
+      }
+    } catch {
+      setMusicOn(false);
+    }
+  };
 
   /** Toast */
   const [toast, setToast] = useState<Toast>(null);
@@ -792,7 +818,13 @@ export default function Invite() {
           ))}
         </nav>
 
-
+        {/* Floating chips */}
+        <div className={`floating ${floatingMode === "dark" ? "floatingDark" : "floatingLight"}`}>
+          <button className="chip" onClick={toggleMusic} type="button" title="Música">
+            <span className="chipDot" data-on={musicOn ? "1" : "0"} />
+            {musicOn ? "Música" : "Sonido"}
+          </button>
+        </div>
 
         {/* =======================
             HERO (NO TOCAR)
