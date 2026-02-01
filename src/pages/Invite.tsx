@@ -711,6 +711,7 @@ if (Math.random() < 0.70) {
       ctx.globalCompositeOperation = "lighter";
 
       const arr = ripplesRef.current;
+if (arr.length > 40) arr.splice(0, arr.length - 40);
       for (let i = arr.length - 1; i >= 0; i--) {
         const r = arr[i];
 
@@ -1085,7 +1086,6 @@ export default function Invite() {
 
       {/* Background */}
       <div className="bg" />
-      <RippleCanvas enabled={musicOn} />
       <div className="rippleWall" aria-hidden="true" />
       <div className="paperTex" />
       <div className="grain" aria-hidden="true" />
