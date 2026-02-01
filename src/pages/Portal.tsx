@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { LazyMotion, domAnimation, motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useMusic } from "../music/MusicProvider";
@@ -12,16 +13,13 @@ export default function PortalCarta() {
   const [phase, setPhase] = useState<Phase>("idle");
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Assets
   const BG_IMG = "/bg-portal.jpeg";
   const VIDEO_SRC =
     "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/video-pantalla-completav2.mp4";
 
-  // ⏱️ Timing
   const EXIT_FADE_MS = 850;
   const NAV_DELAY_MS = 650;
 
-  // 1) Área clickeable del sobre en la imagen de fondo
   const envelopeHit = useMemo(() => {
     return {
       top: "35.7%",
@@ -31,7 +29,6 @@ export default function PortalCarta() {
     } as const;
   }, []);
 
-  // 2) Área clickeable EN EL ÚLTIMO FRAME del video (tu ya lo ajustaste)
   const finalHit = useMemo(() => {
     return {
       top: "50%",
@@ -41,7 +38,6 @@ export default function PortalCarta() {
     } as const;
   }, []);
 
-  // Preload del video
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -78,15 +74,13 @@ export default function PortalCarta() {
     });
   };
 
-  // ✅ Termina el video => freeze frame + solo dejamos el hitFinal
   const onVideoEnded = () => {
     try {
-      videoRef.current?.pause(); // deja el último frame visible
+      videoRef.current?.pause();
     } catch {}
     setPhase("ready");
   };
 
-  // ✅ Segundo click => transición + navigate
   const goInvite = () => {
     if (phase === "leaving") return;
 
@@ -102,11 +96,11 @@ export default function PortalCarta() {
   const isLeaving = phase === "leaving";
   const showVideoLayer = phase === "video" || phase === "ready" || phase === "leaving";
   const showFinalHit = phase === "ready";
-  const lockAllClicks = phase === "ready"; // ✅ aquí bloqueamos todo menos hitFinal
+  const lockAllClicks = phase === "ready";
 
   return (
     <LazyMotion features={domAnimation}>
-      <style>{styles(BG_IMG, EXIT_FADE_MS)}</style>
+      <style>{styles(BG_IMG)}</style>
 
       <div className="portalRoot">
         <div className="bg" aria-hidden="true" />
@@ -115,7 +109,7 @@ export default function PortalCarta() {
           <button
             type="button"
             className="hit"
-            style={envelopeHit as React.CSSProperties}
+            style={envelopeHit as CSSProperties}
             onClick={startVideo}
             aria-label="Abrir invitación"
           />
@@ -145,17 +139,15 @@ export default function PortalCarta() {
                   src={VIDEO_SRC}
                   playsInline
                   muted
-                  autoPlay={phase === "video"} // solo autoplay cuando arranca
+                  autoPlay={phase === "video"}
                   preload="auto"
                   controls={false}
                   crossOrigin="anonymous"
                   onEnded={onVideoEnded}
-                  // ✅ En ready NO permitimos play/replay por click
                   onClick={phase === "video" ? () => videoRef.current?.play() : undefined}
                 />
               </motion.div>
 
-              {/* ✅ Bloquea TODO click/touch en ready */}
               {lockAllClicks && (
                 <button
                   type="button"
@@ -172,12 +164,11 @@ export default function PortalCarta() {
                 />
               )}
 
-              {/* ✅ El ÚNICO click permitido */}
               {showFinalHit && (
                 <button
                   type="button"
                   className="hitFinal"
-                  style={finalHit as React.CSSProperties}
+                  style={finalHit as CSSProperties}
                   onClick={goInvite}
                   aria-label="Ver más detalles"
                 />
@@ -198,7 +189,7 @@ export default function PortalCarta() {
   );
 }
 
-const styles = (bgImg: string,) => `
+const styles = (bgImg: string) => `
 *{ box-sizing:border-box; }
 html,body{ height:100%; }
 body{ margin:0; background:#000; }
@@ -210,7 +201,6 @@ body{ margin:0; background:#000; }
   overflow:hidden;
 }
 
-/* Fondo */
 .bg{
   position:fixed;
   inset:0;
@@ -220,7 +210,6 @@ body{ margin:0; background:#000; }
   background-size:cover;
 }
 
-/* Click del sobre (en la imagen) */
 .hit{
   position:fixed;
   border:0;
@@ -230,7 +219,6 @@ body{ margin:0; background:#000; }
   z-index: 10;
 }
 
-/* Video fullscreen */
 .videoOverlay{
   position:fixed;
   inset:0;
@@ -251,7 +239,6 @@ body{ margin:0; background:#000; }
   object-fit: cover;
 }
 
-/* ✅ Bloqueador: tapa todo (ready) */
 .blockAll{
   position:absolute;
   inset:0;
@@ -259,10 +246,9 @@ body{ margin:0; background:#000; }
   padding:0;
   background:transparent;
   cursor: default;
-  z-index: 24; /* debajo del hitFinal */
+  z-index: 24;
 }
 
-/* ✅ Hit area del último frame (único click) */
 .hitFinal{
   position:absolute;
   border:0;
@@ -270,13 +256,8 @@ body{ margin:0; background:#000; }
   background:transparent;
   cursor:pointer;
   z-index: 25;
-  /* debug:
-  outline: 2px dashed rgba(0,255,180,.9);
-  background: rgba(0,255,180,.10);
-  */
 }
 
-/* Fade elegante al salir */
 .fadeElegant{
   position:absolute;
   inset:0;
