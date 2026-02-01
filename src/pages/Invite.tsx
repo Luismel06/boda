@@ -461,7 +461,7 @@ function SectionDivider() {
 function clamp01(n: number) {
   return Math.max(0, Math.min(1, n));
 }
-function avgRange(data: Uint8Array, from: number, to: number) {
+function avgRange(data: Uint8Array<ArrayBufferLike>, from: number, to: number) {
   const a = Math.max(0, from);
   const b = Math.min(data.length - 1, to);
   let sum = 0;
@@ -476,7 +476,7 @@ function useAudioReactiveCSS(audioRef: React.RefObject<HTMLAudioElement | null>,
   const ctxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const dataRef = useRef<Uint8Array | null>(null);
+  const dataRef = useRef<Uint8Array<ArrayBufferLike> | null>(null);
   const rafRef = useRef<number | null>(null);
 
   const setVars = (pulse: number, bass: number, mid: number, treble: number) => {
@@ -1183,7 +1183,7 @@ export default function Invite() {
                 Desliza para ver más ↓
               </motion.button>
 
-              {!musicReady && (<div className="heroLoading">Cargando música...</div>
+              {!musicReady && (<div className="heroLoading"></div>
               )}
             </div>
           </motion.div>
