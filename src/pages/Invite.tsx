@@ -207,9 +207,6 @@ function TypeReveal({
 
 /** =======================
  *  Clean Section (NEW)
- *  - Sin marcos “duros”
- *  - Separación por línea (no cajas apiladas)
- *  - Look tipo Canva
  *  ======================= */
 function SheetSection({
   id,
@@ -265,7 +262,6 @@ function SheetSection({
 
 /** =======================
  *  Coverflow Carousel + lightbox
- *  (Mantengo tu lógica/funcionalidad)
  *  ======================= */
 function CoverflowCarousel({
   images,
@@ -431,12 +427,14 @@ function ConfettiBurst({ show }: { show: boolean }) {
 }
 
 /** =======================
- *  Divider line (solo línea)
+ *  Divider ornamental + texto (NEW)
+ *  - Similar a tu imagen (líneas con curl + texto al centro)
+ *  - Permite frase por sección
  *  ======================= */
-function SectionDivider() {
+function SectionDivider({ text }: { text?: string }) {
   return (
     <motion.div
-      className="sectionSepWrap"
+      className="sectionSepWrap sectionSepFancy"
       initial={{ opacity: 0, y: 6 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
@@ -444,29 +442,62 @@ function SectionDivider() {
       aria-hidden="true"
     >
       <motion.div
-        className="sectionSep"
-        initial={{ scaleX: 0 }}
-        whileInView={{ scaleX: 1 }}
+        className="sectionSepFancyInner"
+        initial={{ scaleX: 0.96, opacity: 0 }}
+        whileInView={{ scaleX: 1, opacity: 1 }}
         viewport={{ once: true, amount: 0.4 }}
         transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }}
-      />
+      >
+        {/* Left ornament */}
+        <span className="sepOrn left" aria-hidden="true">
+          <svg viewBox="0 0 220 24" preserveAspectRatio="none">
+            <path
+              d="M16 12c8 0 10-10 2-10-6 0-10 8-4 12 5 3 10-2 10-7
+                 M44 12H190
+                 M190 12c8 0 10-10 2-10-6 0-10 8-4 12 5 3 10-2 10-7"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity="0.9"
+            />
+          </svg>
+        </span>
+
+        {/* Center text (optional) */}
+        {text ? (
+          <span className="sepText" aria-hidden="true">
+            {text}
+          </span>
+        ) : (
+          <span className="sepDot" aria-hidden="true" />
+        )}
+
+        {/* Right ornament (mirror) */}
+        <span className="sepOrn right" aria-hidden="true">
+          <svg viewBox="0 0 220 24" preserveAspectRatio="none">
+            <path
+              d="M16 12c8 0 10-10 2-10-6 0-10 8-4 12 5 3 10-2 10-7
+                 M44 12H190
+                 M190 12c8 0 10-10 2-10-6 0-10 8-4 12 5 3 10-2 10-7"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity="0.9"
+            />
+          </svg>
+        </span>
+      </motion.div>
     </motion.div>
   );
 }
 
 /** =======================
- *  Audio reactive background (WebAudio)
- *  (lo mantengo, pero adaptado a tema blanco/azul)
- *  ======================= */
-/** =======================
- *  Audio reactive background (WebAudio)
- *  ======================= */
-
-
-/** =======================
  *  Page
  *  ======================= */
-
 export default function Invite() {
   const WEDDING = useMemo(
     () => ({
@@ -493,7 +524,7 @@ export default function Invite() {
       ],
 
       pinterestUrl: "https://www.pinterest.com/search/pins/?q=outfits%20boda%20formal%20elegante%20hombre%20mujer",
-      dressExample: "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/dress-codev2.jpeg",
+      dressExample: "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/dress-code-def.png",
 
       bank: {
         bank: "Banco BHD",
@@ -539,7 +570,7 @@ export default function Invite() {
   const badgeY = useTransform(heroProg, [0, 1], [0, -40]);
   const badgeO = useTransform(heroProg, [0, 0.7], [1, 0]);
 
-  /** ✅ HERO blur after 2 seconds + text highlight */
+  /** ✅ HERO blur after 2 seconds */
   const [heroBlurOn, setHeroBlurOn] = useState(false);
   useEffect(() => {
     const t = window.setTimeout(() => setHeroBlurOn(true), 2000);
@@ -589,12 +620,6 @@ export default function Invite() {
     return cells;
   }, [WEDDING.dateISO]);
 
-  /** Maps */
-  const openMaps = () => {
-    const q = encodeURIComponent(WEDDING.mapsQuery);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
-  };
-
   /** Audio */
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [musicOn, setMusicOn] = useState(false);
@@ -611,8 +636,6 @@ export default function Invite() {
     a.addEventListener("canplay", onCanPlay);
     return () => a.removeEventListener("canplay", onCanPlay);
   }, []);
-
-
 
   const toggleMusic = async () => {
     const a = audioRef.current;
@@ -780,8 +803,7 @@ export default function Invite() {
       <div className="bg" />
       <div className="paperTex" />
       <div className="grain" aria-hidden="true" />
-      <div className="audioDebug" aria-hidden="true">
-      </div>
+
       <div className="page">
         {/* Confetti */}
         <ConfettiBurst show={confetti} />
@@ -874,17 +896,16 @@ export default function Invite() {
                 Desliza para ver más ↓
               </motion.button>
 
-              {!musicReady && (<div className="heroLoading"></div>
-              )}
+              {!musicReady && <div className="heroLoading"></div>}
             </div>
           </motion.div>
         </section>
 
         {/* =======================
-            CONTENT (REDISEÑADO)
+            CONTENT
             ======================= */}
         <main className="content">
-          {/* 1) Nuestra boda (REDISEÑO) */}
+          {/* 1) Nuestra boda */}
           <SheetSection id="nuestra-boda" bgImage={WEDDING.sectionBg1} watermark={WEDDING.initials}>
             <HeaderScript title="Nuestra Boda" subtitle="Guarda la fecha y acompáñanos en este día tan especial." />
             <div className="subcaps">{formatDateDMY(WEDDING.dateISO)}</div>
@@ -907,11 +928,9 @@ export default function Invite() {
                   {calCells.map((c, idx) => (
                     <div
                       key={idx}
-                      className={[
-                        c.dow ? "calDow" : "calDay",
-                        c.muted ? "calMuted" : "",
-                        c.hit ? "calHit" : "",
-                      ].join(" ")}
+                      className={[c.dow ? "calDow" : "calDay", c.muted ? "calMuted" : "", c.hit ? "calHit" : ""].join(
+                        " "
+                      )}
                     >
                       {c.label}
                     </div>
@@ -928,19 +947,8 @@ export default function Invite() {
                 </div>
               </div>
 
-              {/* Right: info + countdown */}
+              {/* Right: countdown */}
               <div className="stack">
-                <div className="cardSoft detailsCard">
-                  <div className="kicker">Detalles</div>
-                  <div className="detailsTitle">{WEDDING.venue}</div>
-                  <div className="detailsMeta">
-                    <span className="tagPill">{WEDDING.city}</span>
-                    <span className="tagPill">{WEDDING.time}</span>
-                    <span className="tagPill">{formatDateDMY(WEDDING.dateISO)}</span>
-                  </div>
-                  <p className="detailsText">{WEDDING.addressLine}</p>
-                </div>
-
                 <div className="cardSoft countdownCard">
                   <div className="kicker">Cuenta regresiva</div>
                   <CountdownBig d={count.d} h={count.h} m={count.m} s={count.s} />
@@ -949,72 +957,31 @@ export default function Invite() {
             </div>
           </SheetSection>
 
-          <SectionDivider />
+          {/* ✅ Divider con frase */}
+          <SectionDivider text="Un día para recordar" />
 
-          {/* 2) Momentos (mantengo tu carousel, solo el estilo cambia) */}
+          {/* 2) Momentos */}
           <SheetSection id="momentos" bgImage={WEDDING.sectionBg2} watermark="LOVE">
-            <HeaderScript title="Momentos" subtitle="Un vistazo a nuestros recuerdos antes del gran día." />
+            <HeaderScript title="Nosotros" subtitle="Un vistazo a nuestros recuerdos antes del gran día." />
             <CoverflowCarousel images={WEDDING.carousel} onOpen={(src, i) => setLightbox({ src, i })} />
           </SheetSection>
 
-          <SectionDivider />
+          {/* ✅ Divider con frase */}
+          <SectionDivider text="Cada foto cuenta una historia" />
 
-          {/* 3) Ceremonia (REDISEÑO) */}
+          {/* 3) Ceremonia / Ubicación */}
           <SheetSection id="ceremonia" bgImage={WEDDING.sectionBg3} watermark="RSVP">
-            <HeaderScript title="Ceremonia" subtitle="Todo lo que necesitas saber para llegar a tiempo y disfrutar." />
+            <HeaderScript title="Ubicacion" subtitle="Te esperamos en esta hermosa ubicación." />
 
             <div className="layoutSplit">
-              {/* Left: timeline */}
-              <div className="cardSoft timelineCard">
-                <div className="kicker">Agenda</div>
-
-                <div className="timeline">
-                  <div className="tlItem">
-                    <div className="tlDot" />
-                    <div className="tlBody">
-                      <div className="tlTitle">Llegada</div>
-                      <div className="tlText">Te recomendamos llegar con tiempo para ubicarte y tomarte fotos.</div>
-                    </div>
-                    <div className="tlTime">4:30 PM</div>
-                  </div>
-
-                  <div className="tlItem">
-                    <div className="tlDot" />
-                    <div className="tlBody">
-                      <div className="tlTitle">Ceremonia</div>
-                      <div className="tlText">{WEDDING.venue}</div>
-                    </div>
-                    <div className="tlTime">{WEDDING.time}</div>
-                  </div>
-
-                  <div className="tlItem">
-                    <div className="tlDot" />
-                    <div className="tlBody">
-                      <div className="tlTitle">Brindis & celebración</div>
-                      <div className="tlText">Acompáñanos a celebrar este momento con alegría.</div>
-                    </div>
-                    <div className="tlTime">6:30 PM</div>
-                  </div>
-                </div>
-
-                <div className="detailsMeta" style={{ marginTop: 12 }}>
+              <div className="cardSoft mapCard">
+                <div className="detailsTitle">{WEDDING.venue}</div>
+                <div className="detailsMeta">
                   <span className="tagPill">{WEDDING.city}</span>
+                  <span className="tagPill">{WEDDING.time}</span>
                   <span className="tagPill">{formatDateDMY(WEDDING.dateISO)}</span>
                 </div>
-
-                <div className="btnRow" style={{ justifyContent: "flex-start", marginTop: 14 }}>
-                  <button className="pillBtn" onClick={addToGoogleCalendar} type="button">
-                    Agregar al calendario
-                  </button>
-                  <button className="pillBtn" onClick={openMaps} type="button">
-                    Abrir ubicación
-                  </button>
-                </div>
-              </div>
-
-              {/* Right: map */}
-              <div className="cardSoft mapCard">
-                <div className="kicker">Ubicación</div>
+                <p className="detailsText">{WEDDING.addressLine}</p>
                 <div className="mapFrame">
                   <iframe
                     title="Mapa"
@@ -1027,9 +994,10 @@ export default function Invite() {
             </div>
           </SheetSection>
 
-          <SectionDivider />
+          {/* ✅ Divider con frase */}
+          <SectionDivider text="Te esperamos con amor" />
 
-          {/* 4) Vestimenta (REDISEÑO) */}
+          {/* 4) Vestimenta */}
           <SheetSection id="vestimenta" watermark="DRESS">
             <HeaderScript title="Código de vestimenta" subtitle="Formal-elegante. Tonos suaves, evitando blanco por favor." />
 
@@ -1040,24 +1008,12 @@ export default function Invite() {
                   Queremos que seas parte de nuestra historia luciendo espectacular con un look{" "}
                   <span className="capsStrong">Formal-elegante</span> y con estilo. En tonos suaves evitando por favor utilizar el color blanco
                 </p>
-
-                <div className="paletteRow" aria-label="Paleta sugerida">
-                  <div className="palSwatch s1" />
-                  <div className="palSwatch s2" />
-                  <div className="palSwatch s3" />
-                  <div className="palSwatch s4" />
-                  <div className="palSwatch s5" />
-                </div>
-
                 <div className="btnRow" style={{ justifyContent: "flex-start" }}>
                   <button className="pillBtn" onClick={() => window.open(WEDDING.pinterestUrl, "_blank")} type="button">
                     Ver ideas
                   </button>
                 </div>
-              </div>
 
-              <div className="cardSoft dressCard">
-                <div className="kicker">Ejemplo</div>
                 <div className="dressPhoto">
                   <img src={WEDDING.dressExample} alt="Ejemplo vestimenta formal elegante" loading="lazy" />
                 </div>
@@ -1065,13 +1021,14 @@ export default function Invite() {
             </div>
           </SheetSection>
 
-          <SectionDivider />
+          {/* ✅ Divider con frase */}
+          <SectionDivider text="Gracias por acompañarnos" />
 
-          {/* 5) Regalos (REDISEÑO) */}
+          {/* 5) Regalos */}
           <SheetSection id="regalos" watermark={WEDDING.initials}>
             <HeaderScript
               title="Detalle"
-              subtitle="Tu presencia es lo más importante. Si deseas colaborar con nuestra luna de miel (opcional), aquí está la información."
+              subtitle="Tu presencia es lo más importante. Si deseas colaborar con nuestra luna de miel, aquí está la información. (opcional)"
             />
 
             <div className="giftGrid">
@@ -1112,9 +1069,10 @@ export default function Invite() {
             </div>
           </SheetSection>
 
-          <SectionDivider />
+          {/* ✅ Divider con frase */}
+          <SectionDivider text="Confirma tu asistencia" />
 
-          {/* 6) RSVP (REDISEÑO) */}
+          {/* 6) RSVP */}
           <SheetSection id="rsvp" watermark={WEDDING.initials}>
             <HeaderScript title="Confirmación" subtitle="Por favor confirma tu asistencia llenando este formulario." />
 
@@ -1353,7 +1311,6 @@ body{
 .bg{
   position:fixed; inset:0; z-index:0;
   z-index: 0;
-  /* Más contraste + más “vida” con el audio */
   background:
     radial-gradient(900px 520px at 12% 10%,
       rgba(82,113,161, calc(.10 + var(--pulse)*.55)) 0%, transparent 72%),
@@ -1361,7 +1318,7 @@ body{
       rgba(13,21,70, calc(.12 + var(--mid)*.45)) 0%, transparent 72%),
     radial-gradient(900px 520px at 50% 110%,
       rgba(2,2,11, calc(.12 + var(--bass)*.25)) 0%, transparent 72%),
-    linear-gradient(180deg, rgba(2,2,11,.92), rgba(13,21,70,.14));
+    linear-gradient(180deg, rgba(0, 26, 86, 0.92), rgba(13,21,70,.14));
 
   filter:
     saturate(calc(1.08 + var(--treble)*.55))
@@ -1377,7 +1334,6 @@ body{
   inset:-12%;
   pointer-events:none;
 
-  /* Aura grande que “respira” */
   background:
     radial-gradient(640px 420px at 50% 58%,
       rgba(82,113,161, calc(.10 + var(--bass)*.70)) 0%, transparent 70%),
@@ -1411,6 +1367,12 @@ body{
   filter: blur(22px);
   mix-blend-mode: screen;
   animation: bgFloat 9s ease-in-out infinite;
+}
+
+@keyframes bgFloat{
+  0%{ transform: translate3d(-1.5%, -1.0%, 0) rotate(-1deg); }
+  50%{ transform: translate3d(1.0%, 1.5%, 0) rotate(1deg); }
+  100%{ transform: translate3d(-1.5%, -1.0%, 0) rotate(-1deg); }
 }
 
 .paperTex{
@@ -1615,17 +1577,7 @@ body{
 .heroBadge{
   width: min(860px, 92vw);
   text-align:center;
-  border-radius: 28px;
   padding: 18px 16px;
-  border: 1px solid rgba(255,255,255,.18);
-  transition: box-shadow 1s ease, border-color 1s ease, background 1s ease;
-}
-.hero.heroBlurOn .heroBadge{
-  border-color: rgba(82,113,161,.28);
-  background: rgba(2,2,11,.40);
-  box-shadow:
-    0 30px 100px rgba(2,2,11,.55),
-    0 0 0 1px rgba(82,113,161,.10) inset;
 }
 .heroNames{
   font-family: "Great Vibes", cursive;
@@ -1688,13 +1640,6 @@ body{
   box-shadow: 0 16px 44px rgba(2,2,11,.22);
 }
 
-.heroTip{
-  margin-top: 10px;
-  font-size: 11px;
-  color: rgba(255,255,255,.82);
-  text-shadow: 0 12px 30px rgba(2,2,11,.45);
-}
-
 /* =======================
    CONTENT
    ======================= */
@@ -1705,24 +1650,63 @@ body{
   gap: 18px;
 }
 
-/* Divider line */
+/* =======================
+   Divider ornamental + texto (NEW)
+   ======================= */
 .sectionSepWrap{
   width: min(980px, 100%);
   margin: 0 auto;
-  padding: 4px 0;
+  padding: 10px 0;
   display:flex;
   justify-content:center;
 }
-.sectionSep{
-  width: min(860px, 94%);
-  height: 1px;
+.sectionSepFancyInner{
+  width: min(920px, 96%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: 12px;
   transform-origin: center;
-  background: linear-gradient(90deg, transparent, rgba(47,103,211,.32), transparent);
-  opacity: .9;
+  color: rgba(31,79,163,.55);
+}
+.sepOrn{
+  flex: 1 1 auto;
+  min-width: 90px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity: .92;
+  filter: drop-shadow(0 10px 22px rgba(10,33,74,.08));
+}
+.sepOrn svg{ width: 100%; height: 24px; }
+.sepOrn.right{ transform: scaleX(-1); }
+.sepText{
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(31,79,163,.16);
+  background: rgba(255,255,255,.72);
+  backdrop-filter: blur(10px);
+  font-family: Cinzel, serif;
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: rgba(11,22,48,.80);
+  box-shadow: var(--shadow2);
+  max-width: min(520px, 86vw);
+  text-align:center;
+  line-height: 1.35;
+}
+.sepDot{
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(47,103,211,.85);
+  box-shadow: 0 0 0 6px rgba(47,103,211,.12);
 }
 
 /* =======================
-   SECTIONS (sin marcos)
+   SECTIONS
    ======================= */
 .sec{
   width: min(980px, 100%);
@@ -1874,13 +1858,8 @@ body{
   background: rgba(255,255,255,.70);
   color: rgba(11,22,48,.78);
 }
-.tinyHint{
-  margin-top: 10px;
-  font-size: 11px;
-  color: rgba(11,22,48,.62);
-}
 
-/* Nuestra boda details */
+/* Details */
 .detailsTitle{
   margin-top: 8px;
   font-family: "Playfair Display", serif;
@@ -1900,10 +1879,8 @@ body{
   color: rgba(11,22,48,.72);
 }
 
-/* Countdown new */
-.countdown{
-  margin-top: 12px;
-}
+/* Countdown */
+.countdown{ margin-top: 12px; }
 .countDigits{
   display:flex;
   align-items:flex-end;
@@ -1940,7 +1917,7 @@ body{
   color: rgba(11,22,48,.60);
 }
 
-/* Calendar (flat + clean) */
+/* Calendar */
 .calHeader{
   display:flex;
   align-items:flex-start;
@@ -2018,51 +1995,6 @@ body{
 }
 .pillBtn.solid:hover{ background: rgba(47,103,211,.84); }
 
-
-/* Timeline */
-.timeline{
-  margin-top: 12px;
-  display:flex;
-  flex-direction:column;
-  gap: 10px;
-}
-.tlItem{
-  display:grid;
-  grid-template-columns: 12px 1fr auto;
-  gap: 10px;
-  align-items:flex-start;
-  padding: 10px 10px;
-  border-radius: 16px;
-  border: 1px solid var(--line2);
-  background: rgba(255,255,255,.70);
-}
-.tlDot{
-  width: 10px; height: 10px;
-  margin-top: 6px;
-  border-radius: 999px;
-  background: rgba(47,103,211,.88);
-  box-shadow: 0 0 0 6px rgba(47,103,211,.12);
-}
-.tlTitle{
-  font-family: "Playfair Display", serif;
-  font-weight: 600;
-  color: rgba(11,22,48,.92);
-}
-.tlText{
-  margin-top: 4px;
-  font-size: 12px;
-  line-height: 1.6;
-  color: rgba(11,22,48,.70);
-}
-.tlTime{
-  font-family: Cinzel, serif;
-  font-size: 10px;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: rgba(11,22,48,.70);
-  padding-top: 2px;
-}
-
 /* Map */
 .mapFrame{
   margin-top: 10px;
@@ -2074,7 +2006,7 @@ body{
 }
 .mapFrame iframe{ width:100%; height:100%; border:0; }
 
-/* Text body */
+/* Text */
 .textBody{
   margin-top: 12px;
   font-size: 12px;
@@ -2082,34 +2014,12 @@ body{
   color: rgba(11,22,48,.74);
 }
 
-/* Palette row */
-.paletteRow{
-  margin-top: 14px;
-  display:flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.palSwatch{
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  border: 1px solid rgba(31,79,163,.14);
-  box-shadow: var(--shadow2);
-}
-.palSwatch.s1{ background: #ffffff; }
-.palSwatch.s2{ background: #f0f6ff; }
-.palSwatch.s3{ background: #cfe0ff; }
-.palSwatch.s4{ background: #8cb2ff; }
-.palSwatch.s5{ background: #2f67d3; }
-
 /* Dress photo */
 .dressPhoto{
   margin-top: 10px;
-  border-radius: 16px;
   overflow:hidden;
-  border: 1px solid var(--line2);
   aspect-ratio: 3 / 4;
-  background: rgba(255,255,255,.78);
+  background: rgba(255, 255, 255, 0);
 }
 .dressPhoto img{
   width:100%;
@@ -2124,12 +2034,6 @@ body{
   display:grid;
   grid-template-columns: 1fr 1.15fr;
   gap: 14px;
-}
-.noteTitle{
-  margin-top: 10px;
-  font-family: "Playfair Display", serif;
-  font-size: 18px;
-  color: rgba(11,22,48,.92);
 }
 
 /* Bank */
@@ -2186,7 +2090,7 @@ body{
   word-break: break-word;
 }
 
-/* Carousel (light theme) */
+/* Carousel */
 .cfw{ margin-top: 14px; }
 .cfwTopRow{
   margin-top: 10px;
@@ -2327,7 +2231,7 @@ body{
   color: rgba(11,22,48,.62);
 }
 
-/* RSVP shell */
+/* RSVP */
 .rsvpShell{
   margin-top: 18px;
   border-radius: 22px;
@@ -2336,8 +2240,6 @@ body{
   padding: 16px 14px 12px;
   box-shadow: var(--shadow2);
 }
-
-/* Form */
 .form{ margin-top: 8px; }
 .grid2{
   display:grid;
