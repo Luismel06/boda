@@ -11,7 +11,7 @@ type MusicContextValue = {
 const MusicContext = createContext<MusicContextValue | null>(null);
 
 const AUDIO_URL =
-  "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/audio/boda.mp3";
+  "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/audio/boda_v2.mp3";
 
 export function MusicProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
