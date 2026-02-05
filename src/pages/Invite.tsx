@@ -11,6 +11,7 @@ import {
   useSpring,
   useTransform,
 } from "framer-motion";
+import { useMusic } from "../music/MusicProvider";
 
 /** =======================
  *  Supabase
@@ -428,8 +429,6 @@ function ConfettiBurst({ show }: { show: boolean }) {
 
 /** =======================
  *  Divider ornamental + texto (NEW)
- *  - Similar a tu imagen (líneas con curl + texto al centro)
- *  - Permite frase por sección
  *  ======================= */
 function SectionDivider({ text }: { text?: string }) {
   return (
@@ -448,7 +447,6 @@ function SectionDivider({ text }: { text?: string }) {
         viewport={{ once: true, amount: 0.4 }}
         transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }}
       >
-        {/* Left ornament */}
         <span className="sepOrn left" aria-hidden="true">
           <svg viewBox="0 0 220 24" preserveAspectRatio="none">
             <path
@@ -465,7 +463,6 @@ function SectionDivider({ text }: { text?: string }) {
           </svg>
         </span>
 
-        {/* Center text (optional) */}
         {text ? (
           <span className="sepText" aria-hidden="true">
             {text}
@@ -474,7 +471,6 @@ function SectionDivider({ text }: { text?: string }) {
           <span className="sepDot" aria-hidden="true" />
         )}
 
-        {/* Right ornament (mirror) */}
         <span className="sepOrn right" aria-hidden="true">
           <svg viewBox="0 0 220 24" preserveAspectRatio="none">
             <path
@@ -499,6 +495,8 @@ function SectionDivider({ text }: { text?: string }) {
  *  Page
  *  ======================= */
 export default function Invite() {
+  const music = useMusic();
+
   const WEDDING = useMemo(
     () => ({
       couple: "Junior & Glenny",
@@ -534,6 +532,8 @@ export default function Invite() {
         cedula: "00117953034",
       },
 
+      // Nota: la música real vive en MusicProvider (AUDIO_URL)
+      // musicSrc ya no se usa aquí para no duplicar audio
       musicSrc: "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/audio/boda_v2.mp3",
     }),
     []
@@ -620,38 +620,16 @@ export default function Invite() {
     return cells;
   }, [WEDDING.dateISO]);
 
-  /** Audio */
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [musicOn, setMusicOn] = useState(false);
-  const [musicReady, setMusicReady] = useState(false);
-
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    a.loop = true;
-    a.volume = 0.55;
-    a.muted = true;
-
-    const onCanPlay = () => setMusicReady(true);
-    a.addEventListener("canplay", onCanPlay);
-    return () => a.removeEventListener("canplay", onCanPlay);
-  }, []);
-
+  /** ✅ Music toggle (GLOBAL via MusicProvider) */
   const toggleMusic = async () => {
-    const a = audioRef.current;
-    if (!a) return;
-
     try {
-      if (!musicOn) {
-        a.muted = false;
-        await a.play();
-        setMusicOn(true);
+      if (music.isPlaying) {
+        music.stop();
       } else {
-        a.pause();
-        setMusicOn(false);
+        await music.start(); // debe venir de click real (este botón)
       }
     } catch {
-      setMusicOn(false);
+      // ignore
     }
   };
 
@@ -796,9 +774,6 @@ export default function Invite() {
     <LazyMotion features={domAnimation}>
       <style>{styles}</style>
 
-      {/* Audio */}
-      <audio ref={audioRef} src={WEDDING.musicSrc} preload="auto" crossOrigin="anonymous" />
-
       {/* Background */}
       <div className="bg" />
       <div className="paperTex" />
@@ -843,8 +818,8 @@ export default function Invite() {
         {/* Floating chips */}
         <div className={`floating ${floatingMode === "dark" ? "floatingDark" : "floatingLight"}`}>
           <button className="chip" onClick={toggleMusic} type="button" title="Música">
-            <span className="chipDot" data-on={musicOn ? "1" : "0"} />
-            {musicOn ? "Música" : "Sonido"}
+            <span className="chipDot" data-on={music.isPlaying ? "1" : "0"} />
+            {music.isPlaying ? "Música" : "Sonido"}
           </button>
         </div>
 
@@ -896,7 +871,7 @@ export default function Invite() {
                 Desliza para ver más ↓
               </motion.button>
 
-              {!musicReady && <div className="heroLoading"></div>}
+              {!music.isReady && <div className="heroLoading"></div>}
             </div>
           </motion.div>
         </section>
@@ -957,7 +932,6 @@ export default function Invite() {
             </div>
           </SheetSection>
 
-          {/* ✅ Divider con frase */}
           <SectionDivider text="Un día para recordar" />
 
           {/* 2) Momentos */}
@@ -966,7 +940,6 @@ export default function Invite() {
             <CoverflowCarousel images={WEDDING.carousel} onOpen={(src, i) => setLightbox({ src, i })} />
           </SheetSection>
 
-          {/* ✅ Divider con frase */}
           <SectionDivider text="Cada foto cuenta una historia" />
 
           {/* 3) Ceremonia / Ubicación */}
@@ -994,7 +967,6 @@ export default function Invite() {
             </div>
           </SheetSection>
 
-          {/* ✅ Divider con frase */}
           <SectionDivider text="Te esperamos con amor" />
 
           {/* 4) Vestimenta */}
@@ -1006,7 +978,8 @@ export default function Invite() {
                 <div className="kicker">Sugerencia</div>
                 <p className="textBody">
                   Queremos que seas parte de nuestra historia luciendo espectacular con un look{" "}
-                  <span className="capsStrong">Formal-elegante</span> y con estilo. En tonos suaves evitando por favor utilizar el color blanco
+                  <span className="capsStrong">Formal-elegante</span> y con estilo. En tonos suaves evitando por favor
+                  utilizar el color blanco
                 </p>
                 <div className="btnRow" style={{ justifyContent: "flex-start" }}>
                   <button className="pillBtn" onClick={() => window.open(WEDDING.pinterestUrl, "_blank")} type="button">
@@ -1021,7 +994,6 @@ export default function Invite() {
             </div>
           </SheetSection>
 
-          {/* ✅ Divider con frase */}
           <SectionDivider text="Gracias por acompañarnos" />
 
           {/* 5) Regalos */}
@@ -1069,7 +1041,6 @@ export default function Invite() {
             </div>
           </SheetSection>
 
-          {/* ✅ Divider con frase */}
           <SectionDivider text="Confirma tu asistencia" />
 
           {/* 6) RSVP */}
