@@ -534,7 +534,7 @@ export default function Invite() {
         cedula: "00117953034",
       },
 
-      musicSrc: "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/audio/boda.mp3",
+      musicSrc: "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/audio/boda_v2.mp3",
     }),
     []
   );
