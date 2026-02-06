@@ -13,31 +13,39 @@ export default function PortalCarta() {
   const [phase, setPhase] = useState<Phase>("idle");
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
+  // Assets
   const BG_IMG = "/bg-portal.jpeg";
   const VIDEO_SRC =
-    "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/video-pantalla-completav2.mp4";
+    "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/video-introduccion.mp4";
 
+  // Timing
   const EXIT_FADE_MS = 850;
   const NAV_DELAY_MS = 650;
 
-  const envelopeHit = useMemo(() => {
-    return {
-      top: "35.7%",
-      left: "10%",
-      width: "83%",
-      height: "35%",
-    } as const;
-  }, []);
+  // Click areas
+  const envelopeHit = useMemo(
+    () =>
+      ({
+        top: "35.7%",
+        left: "10%",
+        width: "83%",
+        height: "35%",
+      }) as const,
+    []
+  );
 
-  const finalHit = useMemo(() => {
-    return {
-      top: "50%",
-      left: "50%",
-      width: "25%",
-      height: "20%",
-    } as const;
-  }, []);
+  const finalHit = useMemo(
+    () =>
+      ({
+        top: "50%",
+        left: "50%",
+        width: "25%",
+        height: "20%",
+      }) as const,
+    []
+  );
 
+  // Configure video element once
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -45,12 +53,15 @@ export default function PortalCarta() {
       v.muted = true;
       v.playsInline = true;
       v.preload = "auto";
-    } catch {}
+    } catch {
+      // ignore
+    }
   }, []);
 
   const startVideo = async () => {
     if (phase !== "idle") return;
 
+    // Start music from a real click
     await music.start();
 
     setPhase("video");
@@ -68,7 +79,9 @@ export default function PortalCarta() {
         window.setTimeout(async () => {
           try {
             await videoRef.current?.play();
-          } catch {}
+          } catch {
+            // ignore
+          }
         }, 120);
       }
     });
@@ -77,7 +90,9 @@ export default function PortalCarta() {
   const onVideoEnded = () => {
     try {
       videoRef.current?.pause();
-    } catch {}
+    } catch {
+      // ignore
+    }
     setPhase("ready");
   };
 
@@ -88,7 +103,9 @@ export default function PortalCarta() {
 
     try {
       videoRef.current?.pause();
-    } catch {}
+    } catch {
+      // ignore
+    }
 
     window.setTimeout(() => navigate("/invite"), NAV_DELAY_MS);
   };
