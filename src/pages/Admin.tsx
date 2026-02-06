@@ -51,6 +51,10 @@ export default function Admin() {
   // ============== UI EXTRA ==============
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
   const [selected, setSelected] = useState<RSVPRow | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // ✅ modal confirm bonito
+  const [confirming, setConfirming] = useState<RSVPRow | null>(null);
 
   const showToast = (type: "ok" | "err", msg: string) => {
     setToast({ type, msg });
@@ -96,9 +100,7 @@ export default function Admin() {
 
     if (!s) return base;
 
-    return base.filter((r) =>
-      `${r.first_name} ${r.last_name} ${r.phone}`.toLowerCase().includes(s)
-    );
+    return base.filter((r) => `${r.first_name} ${r.last_name} ${r.phone}`.toLowerCase().includes(s));
   }, [q, rows, filter]);
 
   const load = async () => {
@@ -150,6 +152,7 @@ export default function Admin() {
     await supabase.auth.signOut();
     setRows([]);
     setSelected(null);
+    setConfirming(null);
     showToast("ok", "Sesión cerrada");
   };
 
@@ -160,6 +163,47 @@ export default function Admin() {
     } catch {
       showToast("err", "No se pudo copiar");
     }
+  };
+
+  // =========================
+  // DELETE RSVP (REAL)
+  // =========================
+  const deleteRSVP = async (row: RSVPRow) => {
+    if (deletingId) return;
+
+    setErrMsg(null);
+    setDeletingId(row.id);
+
+    // optimistic remove
+    const prev = rows;
+    setRows((p) => p.filter((x) => x.id !== row.id));
+    if (selected?.id === row.id) setSelected(null);
+
+    const { error } = await supabase.from("rsvps").delete().eq("id", row.id);
+
+    setDeletingId(null);
+
+    if (error) {
+      console.error(error);
+      // rollback
+      setRows(prev);
+      showToast("err", error.message || "No se pudo eliminar (revisa RLS/policies)");
+      return;
+    }
+
+    showToast("ok", "Confirmación eliminada");
+  };
+
+  const askDelete = (row: RSVPRow) => {
+    if (deletingId) return;
+    setConfirming(row);
+  };
+
+  const confirmDelete = async () => {
+    if (!confirming) return;
+    const row = confirming;
+    setConfirming(null);
+    await deleteRSVP(row);
   };
 
   // =========================
@@ -234,9 +278,7 @@ export default function Admin() {
 
               {errMsg ? <div className="errorBox">Error: {errMsg}</div> : null}
 
-              <div className="hint">
-                *Este acceso solo es para los Novios .
-              </div>
+              <div className="hint">*Este acceso solo es para los Novios .</div>
             </form>
           </motion.div>
         </div>
@@ -277,11 +319,7 @@ export default function Admin() {
 
       <div className="appShell withTopBar">
         {/* Stats cards */}
-        <motion.div
-          className="statsGrid"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <motion.div className="statsGrid" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <StatCard label="Confirmaciones" value={totals.totalConfirmed} />
           <StatCard label="Personas" value={totals.totalGuests} />
           <StatCard label="Niños" value={totals.totalKids} />
@@ -299,7 +337,7 @@ export default function Admin() {
               className="searchInput"
             />
             {q ? (
-              <button className="xBtn" onClick={() => setQ("")} aria-label="Limpiar búsqueda">
+              <button className="xBtn" onClick={() => setQ("")} aria-label="Limpiar búsqueda" type="button">
                 ✕
               </button>
             ) : null}
@@ -323,66 +361,67 @@ export default function Admin() {
         {/* List */}
         <AnimatePresence>
           {loading ? (
-            <motion.div
-              className="glassCard centerCard"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-            >
+            <motion.div className="glassCard centerCard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               Cargando...
             </motion.div>
           ) : filtered.length === 0 ? (
-            <motion.div
-              className="glassCard centerCard"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-            >
+            <motion.div className="glassCard centerCard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               No hay confirmaciones.
             </motion.div>
           ) : (
-            <motion.div
-              className="list"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
+            <motion.div className="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               {filtered.map((r, idx) => (
-                <motion.button
+                <motion.div
                   key={r.id}
-                  className="rowCard"
-                  onClick={() => setSelected(r)}
+                  className="rowCardWrap"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(idx * 0.02, 0.18) }}
                 >
-                  <div className="rowTop">
-                    <div className="avatar">{initials(r.first_name, r.last_name)}</div>
+                  <button className="rowCardBtn" onClick={() => setSelected(r)} type="button">
+                    <div className="rowTop">
+                      <div className="avatar">{initials(r.first_name, r.last_name)}</div>
 
-                    <div className="rowMain">
-                      <div className="rowName">
-                        {r.first_name} {r.last_name}
+                      <div className="rowMain">
+                        <div className="rowName">
+                          {r.first_name} {r.last_name}
+                        </div>
+                        <div className="rowSub">
+                          <span className="mono">{r.phone}</span>
+                          <span className="dotSep">•</span>
+                          <span className="muted">{fmtDate(r.created_at)}</span>
+                        </div>
                       </div>
-                      <div className="rowSub">
-                        <span className="mono">{r.phone}</span>
-                        <span className="dotSep">•</span>
-                        <span className="muted">{fmtDate(r.created_at)}</span>
+
+                      <div className="rowRight">
+                        <div className="idPill">#{r.id.slice(0, 6)}</div>
                       </div>
                     </div>
 
-                    <div className="rowRight">
-                      <div className="idPill">#{r.id.slice(0, 6)}</div>
+                    <div className="chips">
+                      <Tag>
+                        👥 {Number(r.guests_count) || 0} {Number(r.guests_count) === 1 ? "persona" : "personas"}
+                      </Tag>
+                      <Tag>🧒 {Number(r.kids_count) || 0} niños</Tag>
+                      {(Number(r.kids_count) || 0) > 0 ? <Tag className="tagOk">Niños ✓</Tag> : <Tag className="tagOff">Sin niños</Tag>}
                     </div>
-                  </div>
+                  </button>
 
-                  <div className="chips">
-                    <Tag>
-                      👥 {Number(r.guests_count) || 0} {Number(r.guests_count) === 1 ? "persona" : "personas"}
-                    </Tag>
-                    <Tag>🧒 {Number(r.kids_count) || 0} niños</Tag>
-                    {(Number(r.kids_count) || 0) > 0 ? <Tag className="tagOk">Kids ✓</Tag> : <Tag className="tagOff">No kids</Tag>}
-                  </div>
-                </motion.button>
+                  <button
+                    className="rowDeleteBtn"
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      askDelete(r);
+                    }}
+                    disabled={deletingId === r.id}
+                    aria-label="Eliminar confirmación"
+                    title="Eliminar"
+                  >
+                    {deletingId === r.id ? "..." : "Eliminar"}
+                  </button>
+                </motion.div>
               ))}
             </motion.div>
           )}
@@ -390,18 +429,15 @@ export default function Admin() {
 
         {/* Bottom bar (mobile) */}
         <div className="bottomBar">
-          <button className="bottomBtn" onClick={() => load()}>
+          <button className="bottomBtn" onClick={() => load()} type="button">
             <span className="bottomIco">↻</span>
             <span className="bottomTxt">{loading ? "..." : "Actualizar"}</span>
           </button>
-          <button
-            className="bottomBtn"
-            onClick={() => copy(String(totals.totalGuests), "Total de personas copiado")}
-          >
+          <button className="bottomBtn" onClick={() => copy(String(totals.totalGuests), "Total de personas copiado")} type="button">
             <span className="bottomIco">⎘</span>
             <span className="bottomTxt">Copiar total</span>
           </button>
-          <button className="bottomBtn danger" onClick={signOut}>
+          <button className="bottomBtn danger" onClick={signOut} type="button">
             <span className="bottomIco">⇥</span>
             <span className="bottomTxt">Salir</span>
           </button>
@@ -441,7 +477,7 @@ export default function Admin() {
                   </div>
                 </div>
 
-                <button className="xBtn2" onClick={() => setSelected(null)} aria-label="Cerrar">
+                <button className="xBtn2" onClick={() => setSelected(null)} aria-label="Cerrar" type="button">
                   ✕
                 </button>
               </div>
@@ -462,11 +498,64 @@ export default function Admin() {
               </div>
 
               <div className="modalActions">
-                <button className="btnGhost" onClick={() => copy(selected.phone, "Teléfono copiado")}>
+                <button className="btnGhost" onClick={() => copy(selected.phone, "Teléfono copiado")} type="button">
                   Copiar teléfono
                 </button>
-                <button className="btnPrimary" onClick={() => copy(selected.id, "ID copiado")}>
+                <button className="btnPrimary" onClick={() => copy(selected.id, "ID copiado")} type="button">
                   Copiar ID
+                </button>
+                <button
+                  className="btnDanger"
+                  onClick={() => askDelete(selected)}
+                  type="button"
+                  disabled={deletingId === selected.id}
+                >
+                  {deletingId === selected.id ? "..." : "Eliminar"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      {/* ✅ Confirm modal bonito */}
+      <AnimatePresence>
+        {confirming ? (
+          <motion.div
+            className="confirmOverlay"
+            onClick={() => setConfirming(null)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="confirmCard"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, y: 16, scale: 0.98, filter: "blur(12px)" }}
+              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: 16, scale: 0.98, filter: "blur(12px)" }}
+              transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
+            >
+              <div className="confirmIcon">⚠️</div>
+              <div className="confirmTitle">¿Eliminar confirmación?</div>
+              <div className="confirmText">
+                Vas a eliminar la confirmación de{" "}
+                <b>
+                  {confirming.first_name} {confirming.last_name}
+                </b>
+                .
+                <div style={{ marginTop: 6, opacity: 0.85 }}>
+                  Tel: <span className="mono">{confirming.phone}</span>
+                </div>
+                <div style={{ marginTop: 8, opacity: 0.8 }}>Esta acción no se puede deshacer.</div>
+              </div>
+
+              <div className="confirmActions">
+                <button className="btnGhost" onClick={() => setConfirming(null)} type="button">
+                  Cancelar
+                </button>
+                <button className="btnDangerSolid" onClick={confirmDelete} type="button">
+                  Sí, eliminar
                 </button>
               </div>
             </motion.div>
@@ -481,17 +570,9 @@ export default function Admin() {
 
 /* ===================== Components ===================== */
 
-function Chip({
-  on,
-  children,
-  onClick,
-}: {
-  on: boolean;
-  children: React.ReactNode;
-  onClick: () => void;
-}) {
+function Chip({ on, children, onClick }: { on: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
-    <button className={`chip ${on ? "on" : ""}`} onClick={onClick}>
+    <button className={`chip ${on ? "on" : ""}`} onClick={onClick} type="button">
       {children}
     </button>
   );
@@ -754,18 +835,52 @@ body{
 
 /* List */
 .list{ margin-top: 14px; display:grid; gap: 12px; }
-.rowCard{
+
+.rowCardWrap{
+  position: relative;
+  border-radius: 22px;
+  box-shadow: 0 18px 56px rgba(2,2,11,.10);
+  background: rgba(255,255,255,.84);
+  border: 1px solid rgba(13,21,70,.10);
+  overflow: hidden;
+}
+.rowCardBtn{
   text-align:left;
   width:100%;
-  border: 1px solid rgba(13,21,70,.10);
-  background: rgba(255,255,255,.84);
-  box-shadow: 0 18px 56px rgba(2,2,11,.10);
-  border-radius: 22px;
+  border: 0;
+  background: transparent;
   padding: 14px;
+  padding-right: 92px;  /* deja espacio horizontal para que no estorbe */
+  padding-bottom: 52px; /* deja espacio abajo para el botón */
   cursor:pointer;
+  display:block;
 }
-.rowCard:active{ transform: scale(.995); }
 
+.rowDeleteBtn{
+  position: absolute;
+  right: 12px;
+  bottom: 12px;      /* 👈 abajo */
+  top: auto;         /* 👈 quita el top */
+
+  border-radius: 999px;
+  border: 1px solid rgba(220,80,80,.35);
+  background: rgba(255,255,255,.86);
+  color: rgba(140,20,20,.92);
+  font-family: Cinzel, serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-size: 9px;
+  padding: 10px 12px;
+  cursor:pointer;
+  box-shadow: 0 12px 28px rgba(2,2,11,.08);
+}
+.rowDeleteBtn:disabled{
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+
+/* Row content */
 .rowTop{ display:flex; gap: 12px; align-items:center; }
 .avatar{
   width: 46px; height: 46px;
@@ -778,11 +893,7 @@ body{
   letter-spacing: .10em;
   box-shadow: 0 14px 36px rgba(2,2,11,.10);
 }
-.avatar.big{
-  width: 52px; height: 52px;
-  border-radius: 18px;
-}
-
+.avatar.big{ width: 52px; height: 52px; border-radius: 18px; }
 .rowMain{ flex: 1; min-width: 0; }
 .rowName{
   font-family: Cinzel, serif;
@@ -807,7 +918,6 @@ body{
 .dotSep{ opacity:.5; }
 .muted{ opacity:.72; }
 .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-
 .rowRight{ display:flex; justify-content:flex-end; }
 .idPill{
   font-size: 11px;
@@ -846,7 +956,6 @@ body{
   cursor:pointer;
   box-shadow: 0 16px 44px rgba(2,2,11,.10);
 }
-.btnPrimary:active{ transform: scale(.99); }
 .btnGhost{
   border: 1px solid rgba(13,21,70,.12);
   background: rgba(255,255,255,.76);
@@ -870,6 +979,19 @@ body{
   padding: 12px 14px;
   border-radius: 999px;
   cursor:pointer;
+}
+.btnDangerSolid{
+  border: 1px solid rgba(220,80,80,.55);
+  background: rgba(220,80,80,.14);
+  color: rgba(140,20,20,.92);
+  font-family: Cinzel, serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-size: 10px;
+  padding: 12px 14px;
+  border-radius: 999px;
+  cursor:pointer;
+  box-shadow: 0 16px 44px rgba(2,2,11,.10);
 }
 
 /* Bottom bar */
@@ -928,12 +1050,7 @@ body{
   max-height: 78vh;
   overflow:auto;
 }
-.modalHead{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap: 10px;
-}
+.modalHead{ display:flex; justify-content:space-between; align-items:center; gap: 10px; }
 .modalTitle{ display:flex; gap: 12px; align-items:center; }
 .modalGrid{
   margin-top: 12px;
@@ -954,17 +1071,54 @@ body{
   font-size: 9px;
   opacity: .75;
 }
-.miniVal{
-  margin-top: 8px;
-  font-weight: 700;
-  font-size: 14px;
-}
+.miniVal{ margin-top: 8px; font-weight: 700; font-size: 14px; }
 .modalActions{
   margin-top: 12px;
   display:flex;
   gap: 10px;
   flex-wrap: wrap;
   justify-content:flex-end;
+}
+
+/* Confirm modal */
+.confirmOverlay{
+  position: fixed;
+  inset: 0;
+  z-index: 3500;
+  background: rgba(2,2,11,.40);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding: 14px;
+}
+.confirmCard{
+  width: min(520px, 100%);
+  border-radius: 24px;
+  border: 1px solid rgba(13,21,70,.12);
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 22px 70px rgba(2,2,11,.22);
+  padding: 16px;
+}
+.confirmIcon{ font-size: 26px; }
+.confirmTitle{
+  margin-top: 8px;
+  font-family: Cinzel, serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+.confirmText{
+  margin-top: 10px;
+  font-size: 13px;
+  opacity: .9;
+  line-height: 1.4;
+}
+.confirmActions{
+  margin-top: 14px;
+  display:flex;
+  justify-content:flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 /* Toast */
@@ -1002,7 +1156,7 @@ body{
   .appShell{ padding-left: 2px; padding-right: 2px; }
   .withTopBar{ padding-top: 74px; }
   .bottomBar{ display:flex; gap: 10px; }
-  .topActions{ display:none; } /* en móvil usamos bottom bar */
+  .topActions{ display:none; }
   .brandScript{ font-size: 44px; }
   .modalOverlay{ align-items:flex-end; }
   .modalGrid{ grid-template-columns: 1fr; }

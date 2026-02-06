@@ -11,6 +11,7 @@ import {
   useSpring,
   useTransform,
 } from "framer-motion";
+import { createPortal } from "react-dom";
 import { useMusic } from "../music/MusicProvider";
 
 /** =======================
@@ -40,6 +41,22 @@ function pad2(n: number) {
 function formatDateDMY(dateISO: string) {
   const d = new Date(dateISO);
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
+
+/** =======================
+ *  Phone helpers (ONLY digits)
+ *  ======================= */
+function onlyDigits(s: string) {
+  return (s || "").replace(/\D+/g, "");
+}
+function formatPhoneDisplay(digits: string) {
+  // DR-like format: 809 123 4567 (if 10 digits)
+  const d = onlyDigits(digits).slice(0, 15);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)} ${d.slice(3)}`;
+  if (d.length <= 10) return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
+  // if longer, keep grouping after 10
+  return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6, 10)} ${d.slice(10)}`;
 }
 
 /** =======================
@@ -207,7 +224,7 @@ function TypeReveal({
 }
 
 /** =======================
- *  Clean Section (NEW)
+ *  Clean Section
  *  ======================= */
 function SheetSection({
   id,
@@ -383,52 +400,67 @@ function CoverflowCarousel({
 }
 
 /** =======================
- *  Confetti (soft)
+ *  Confetti (FULL SCREEN via Portal ✅)
  *  ======================= */
 function ConfettiBurst({ show }: { show: boolean }) {
   const reduce = useReducedMotion();
+
   const pieces = useMemo(() => {
-    const arr = Array.from({ length: 26 }).map((_, i) => ({
-      id: i,
-      x: (Math.random() - 0.5) * 280,
-      y: 230 + Math.random() * 220,
-      r: (Math.random() - 0.5) * 260,
-      s: 0.65 + Math.random() * 0.85,
-      d: 0.65 + Math.random() * 0.55,
-      o: 0.45 + Math.random() * 0.35,
-    }));
-    return arr;
+    if (!show) return [];
+    const count = 220;
+    return Array.from({ length: count }).map((_, i) => {
+      const x = Math.random() * 100; // vw
+      const size = 6 + Math.random() * 10; // px
+      const delay = Math.random() * 0.35; // s
+      const dur = 1.6 + Math.random() * 1.2; // s
+      const drift = (Math.random() - 0.5) * 22; // vw
+      const rot = (Math.random() - 0.5) * 900; // deg
+      const op = 0.35 + Math.random() * 0.55;
+      const blur = Math.random() * 0.6;
+      return { id: i, x, size, delay, dur, drift, rot, op, blur };
+    });
   }, [show]);
 
-  if (reduce) return null;
+  if (reduce || !show) return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      {show && (
-        <motion.div
-          className="confetti"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          aria-hidden="true"
-        >
-          {pieces.map((p) => (
-            <motion.span
-              key={p.id}
-              className="confettiPiece"
-              initial={{ opacity: 0, x: 0, y: 0, rotate: 0, scale: 0.8 }}
-              animate={{ opacity: p.o, x: p.x, y: p.y, rotate: p.r, scale: p.s }}
-              transition={{ duration: p.d, ease: [0.2, 0.8, 0.2, 1] }}
-            />
-          ))}
-        </motion.div>
-      )}
-    </AnimatePresence>
+      <motion.div
+        className="confettiScreen"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        aria-hidden="true"
+      >
+        {pieces.map((p) => (
+          <motion.span
+            key={p.id}
+            className="confettiPiece"
+            style={{
+              left: `${p.x}vw`,
+              width: `${p.size}px`,
+              height: `${Math.max(5, p.size * 0.55)}px`,
+              opacity: p.op,
+              filter: `blur(${p.blur}px)`,
+            }}
+            initial={{ y: "-12vh", x: "0vw", rotate: 0, scale: 0.9 }}
+            animate={{ y: "112vh", x: `${p.drift}vw`, rotate: p.rot, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              duration: p.dur,
+              delay: p.delay,
+              ease: [0.15, 0.9, 0.2, 1],
+            }}
+          />
+        ))}
+      </motion.div>
+    </AnimatePresence>,
+    document.body
   );
 }
 
 /** =======================
- *  Divider ornamental + texto (NEW)
+ *  Divider ornamental + texto
  *  ======================= */
 function SectionDivider({ text }: { text?: string }) {
   return (
@@ -532,14 +564,12 @@ export default function Invite() {
         cedula: "00117953034",
       },
 
-      // Nota: la música real vive en MusicProvider (AUDIO_URL)
-      // musicSrc ya no se usa aquí para no duplicar audio
       musicSrc: "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/audio/boda_v2.mp3",
     }),
     []
   );
 
-  /** Fonts (mantengo tus fuentes) */
+  /** Fonts */
   useEffect(() => {
     const id = "invite-fonts";
     if (document.getElementById(id)) return;
@@ -620,13 +650,13 @@ export default function Invite() {
     return cells;
   }, [WEDDING.dateISO]);
 
-  /** ✅ Music toggle (GLOBAL via MusicProvider) */
+  /** ✅ Music toggle */
   const toggleMusic = async () => {
     try {
       if (music.isPlaying) {
         music.stop();
       } else {
-        await music.start(); // debe venir de click real (este botón)
+        await music.start();
       }
     } catch {
       // ignore
@@ -712,7 +742,7 @@ export default function Invite() {
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
-    phone: "",
+    phone: "", // ✅ store ONLY digits
     guests: 1,
     kids: false,
     kids_count: 0,
@@ -724,10 +754,12 @@ export default function Invite() {
   const submitRSVP = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const phoneDigits = onlyDigits(form.phone);
+
     const payload: RSVPInsert = {
       first_name: form.first_name.trim(),
       last_name: form.last_name.trim(),
-      phone: form.phone.trim(),
+      phone: phoneDigits, // ✅ send only digits to DB
       guests_count: Number(form.guests) || 1,
       kids: Boolean(form.kids),
       kids_count: form.kids ? Number(form.kids_count) || 0 : 0,
@@ -735,6 +767,12 @@ export default function Invite() {
 
     if (!payload.first_name || !payload.last_name || !payload.phone) {
       showToast("err", "Completa nombre, apellido y teléfono.");
+      return;
+    }
+
+    // (opcional) mínimo 10 dígitos
+    if (payload.phone.length < 10) {
+      showToast("err", "El teléfono debe tener al menos 10 dígitos.");
       return;
     }
 
@@ -749,7 +787,7 @@ export default function Invite() {
 
     showToast("ok", "¡Confirmación enviada! Gracias");
     setConfetti(true);
-    window.setTimeout(() => setConfetti(false), 900);
+    window.setTimeout(() => setConfetti(false), 1600);
 
     setForm({
       first_name: "",
@@ -797,7 +835,7 @@ export default function Invite() {
           )}
         </AnimatePresence>
 
-        {/* Right-side scroll indicator + dots */}
+        {/* Right-side scroll indicator */}
         <div className="rail" aria-hidden="true">
           <motion.div className="railFill" style={{ scaleY: prog }} />
         </div>
@@ -1075,12 +1113,32 @@ export default function Invite() {
                   <Field label="Teléfono">
                     <input
                       className="input"
-                      value={form.phone}
-                      onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                      value={formatPhoneDisplay(form.phone)} // ✅ muestra “bonito”
+                      onChange={(e) => {
+                        const digits = onlyDigits(e.target.value);
+                        setForm((p) => ({ ...p, phone: digits }));
+                      }}
                       placeholder="Ej: 8091234567"
+                      inputMode="numeric"
                       autoComplete="tel"
-                      inputMode="tel"
+                      // ✅ bloquea letras en desktop y evita caracteres
+                      onKeyDown={(e) => {
+                        const allowed = [
+                          "Backspace",
+                          "Delete",
+                          "ArrowLeft",
+                          "ArrowRight",
+                          "Home",
+                          "End",
+                          "Tab",
+                        ];
+                        if (allowed.includes(e.key)) return;
+                        // Permitir Ctrl/Cmd + A/C/V/X
+                        if ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x"].includes(e.key.toLowerCase())) return;
+                        if (!/^\d$/.test(e.key)) e.preventDefault();
+                      }}
                     />
+                    <div className="hint">Solo números (mínimo 10 dígitos)</div>
                   </Field>
 
                   <Field label="¿Cuántas personas van contigo?">
@@ -1235,11 +1293,10 @@ function DigitBlock({ value, label }: { value: string; label: string }) {
 }
 
 /** =======================
- *  Styles (REDISEÑO BLANCO/AZUL)
+ *  Styles
  *  ======================= */
 const styles = `
 :root{
-  /* White/Blue palette */
   --bg0: #f7fbff;
   --bg1: #ffffff;
   --ink: #0b1630;
@@ -1260,7 +1317,6 @@ const styles = `
   --shadow1: 0 18px 60px rgba(10,33,74,.10);
   --shadow2: 0 10px 26px rgba(10,33,74,.08);
 
-  /* Audio-reactive vars (0..1) */
   --pulse: 0;
   --bass: 0;
   --mid: 0;
@@ -1276,12 +1332,9 @@ body{
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
-/* =======================
-   Background (white/blue, reacts subtly)
-   ======================= */
+/* Background */
 .bg{
   position:fixed; inset:0; z-index:0;
-  z-index: 0;
   background:
     radial-gradient(900px 520px at 12% 10%,
       rgba(82,113,161, calc(.10 + var(--pulse)*.55)) 0%, transparent 72%),
@@ -1290,21 +1343,17 @@ body{
     radial-gradient(900px 520px at 50% 110%,
       rgba(2,2,11, calc(.12 + var(--bass)*.25)) 0%, transparent 72%),
     linear-gradient(180deg, rgba(0, 26, 86, 0.92), rgba(13,21,70,.14));
-
   filter:
     saturate(calc(1.08 + var(--treble)*.55))
     brightness(calc(.96 + var(--pulse)*.14))
     contrast(calc(1.02 + var(--bass)*.10));
-
   transition: filter .18s ease;
 }
-
 .bg::before{
   content:"";
   position:absolute;
   inset:-12%;
   pointer-events:none;
-
   background:
     radial-gradient(640px 420px at 50% 58%,
       rgba(82,113,161, calc(.10 + var(--bass)*.70)) 0%, transparent 70%),
@@ -1312,19 +1361,16 @@ body{
       rgba(13,21,70, calc(.08 + var(--mid)*.60)) 0%, transparent 72%),
     radial-gradient(760px 460px at 80% 30%,
       rgba(82,113,161, calc(.06 + var(--treble)*.55)) 0%, transparent 72%);
-
   filter: blur(18px);
   opacity: calc(.55 + var(--pulse)*.35);
   mix-blend-mode: screen;
   transform: translate3d(0,0,0);
 }
-
 .bg::after{
   content:"";
   position:absolute;
   inset:-18%;
   pointer-events:none;
-
   background:
     conic-gradient(
       from 180deg at 50% 50%,
@@ -1333,13 +1379,11 @@ body{
       rgba(2,2,11, .10),
       rgba(82,113,161, calc(.10 + var(--treble)*.25))
     );
-
   opacity: calc(.30 + var(--pulse)*.45);
   filter: blur(22px);
   mix-blend-mode: screen;
   animation: bgFloat 9s ease-in-out infinite;
 }
-
 @keyframes bgFloat{
   0%{ transform: translate3d(-1.5%, -1.0%, 0) rotate(-1deg); }
   50%{ transform: translate3d(1.0%, 1.5%, 0) rotate(1deg); }
@@ -1388,23 +1432,25 @@ body{
 .toast.ok{ border-color: rgba(47,103,211,.28); }
 .toast.err{ border-color: rgba(255,120,120,.28); }
 
-/* Confetti */
-.confetti{
-  position:fixed;
-  inset:0;
-  pointer-events:none;
-  z-index: 4500;
-  display:grid;
-  place-items:center;
+/* Confetti (FULL SCREEN via portal) */
+.confettiScreen{
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 999999;
+  overflow: hidden;
 }
 .confettiPiece{
-  position:absolute;
-  width: 10px;
-  height: 6px;
+  position: absolute;
+  top: 0;
   border-radius: 999px;
   border: 1px solid rgba(47,103,211,.20);
   background: rgba(47,103,211,.35);
   box-shadow: var(--shadow2);
+  will-change: transform;
 }
 
 /* Floating */
@@ -1499,9 +1545,7 @@ body{
   border-color: rgba(47,103,211,.70);
 }
 
-/* =======================
-   HERO (NO TOCAR)
-   ======================= */
+/* HERO */
 .hero{
   position:relative;
   min-height: 100vh;
@@ -1611,9 +1655,7 @@ body{
   box-shadow: 0 16px 44px rgba(2,2,11,.22);
 }
 
-/* =======================
-   CONTENT
-   ======================= */
+/* Content */
 .content{
   padding: 34px 14px 70px;
   display:flex;
@@ -1621,9 +1663,7 @@ body{
   gap: 18px;
 }
 
-/* =======================
-   Divider ornamental + texto (NEW)
-   ======================= */
+/* Divider */
 .sectionSepWrap{
   width: min(980px, 100%);
   margin: 0 auto;
@@ -1676,9 +1716,7 @@ body{
   box-shadow: 0 0 0 6px rgba(47,103,211,.12);
 }
 
-/* =======================
-   SECTIONS
-   ======================= */
+/* Sections */
 .sec{
   width: min(980px, 100%);
   margin: 0 auto;
@@ -1769,7 +1807,7 @@ body{
   color: rgba(11,22,48,.86);
 }
 
-/* Layout helpers */
+/* Layout */
 .layoutSplit{
   margin-top: 18px;
   display:grid;
@@ -1852,49 +1890,44 @@ body{
 
 /* Countdown */
 .countdown{ margin-top: 12px; }
-
 .countDigits{
   display:flex;
   align-items:flex-end;
-  justify-content:space-between; /* reparte mejor */
-  gap: 6px;                      /* menos espacio */
-  flex-wrap: nowrap;             /* ✅ NO wrap */
+  justify-content:space-between;
+  gap: 6px;
+  flex-wrap: nowrap;
 }
-
 .colon{
   font-family: "Playfair Display", serif;
-  font-size: 18px;               /* ↓ antes 26 */
+  font-size: 18px;
   color: rgba(11,22,48,.45);
-  margin-bottom: 8px;            /* ↓ antes 10 */
+  margin-bottom: 8px;
   flex: 0 0 auto;
 }
-
 .digitBlock{
-  min-width: 0;                  /* ✅ permite encoger */
-  flex: 1 1 0;                   /* ✅ 4 bloques iguales */
-  border-radius: 14px;           /* ↓ antes 16 */
+  min-width: 0;
+  flex: 1 1 0;
+  border-radius: 14px;
   border: 1px solid var(--line2);
   background: rgba(255,255,255,.72);
-  padding: 8px 8px;              /* ↓ antes 10 */
+  padding: 8px 8px;
   text-align:center;
 }
-
 .digit{
   font-family: "Playfair Display", serif;
-  font-size: 22px;               /* ↓ antes 28 */
-  letter-spacing: .04em;         /* ↓ antes .06 */
+  font-size: 22px;
+  letter-spacing: .04em;
   color: rgba(11,22,48,.92);
   line-height: 1;
 }
-
 .digitLbl{
-  margin-top: 4px;               /* ↓ antes 6 */
+  margin-top: 4px;
   font-family: Cinzel, serif;
-  font-size: 9px;                /* ↓ antes 10 */
-  letter-spacing: .12em;         /* ↓ antes .14 */
+  font-size: 9px;
+  letter-spacing: .12em;
   text-transform: uppercase;
   color: rgba(11,22,48,.60);
-  white-space: nowrap;           /* ✅ no rompe label */
+  white-space: nowrap;
 }
 
 /* Calendar */

@@ -14,7 +14,7 @@ export default function PortalCarta() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Assets
-  const BG_IMG = "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/INICIO.png";
+  const BG_IMG = "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/Inicio-def.png";
   const VIDEO_SRC =
     "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/VIDEO%201111.mp4";
 
@@ -41,6 +41,7 @@ export default function PortalCarta() {
         left: "50%",
         width: "25%",
         height: "20%",
+        transform: "translate(-50%, -50%)",
       }) as const,
     []
   );
@@ -53,6 +54,7 @@ export default function PortalCarta() {
       v.muted = true;
       v.playsInline = true;
       v.preload = "auto";
+      v.controls = false;
     } catch {
       // ignore
     }
@@ -62,7 +64,11 @@ export default function PortalCarta() {
     if (phase !== "idle") return;
 
     // Start music from a real click
-    await music.start();
+    try {
+      await music.start();
+    } catch {
+      // ignore
+    }
 
     setPhase("video");
 
@@ -141,12 +147,15 @@ export default function PortalCarta() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
             >
+              {/* ⚠️ IMPORTANTE:
+                  - NO usar filter en el wrapper del video (ni blur(0)).
+                  - Si quieres “blur”/fade, hazlo con overlay encima (fadeElegant).
+               */}
               <motion.div
                 className="videoInner"
                 initial={false}
                 animate={{
-                  scale: isLeaving ? 1.03 : 1,
-                  filter: isLeaving ? "blur(1px)" : "blur(0px)",
+                  scale: isLeaving ? 1.02 : 1,
                 }}
                 transition={{ duration: EXIT_FADE_MS / 1000, ease: [0.2, 0.8, 0.2, 1] }}
               >
@@ -159,7 +168,11 @@ export default function PortalCarta() {
                   autoPlay={phase === "video"}
                   preload="auto"
                   controls={false}
-                  crossOrigin="anonymous"
+                  // ayuda a evitar opciones raras en mobile/desktop
+                  disablePictureInPicture
+                  controlsList="nodownload noplaybackrate noremoteplayback"
+                  // crossOrigin no es necesario para reproducir; solo si haces canvas/WebGL con el video.
+                  // crossOrigin="anonymous"
                   onEnded={onVideoEnded}
                   onClick={phase === "video" ? () => videoRef.current?.play() : undefined}
                 />
@@ -191,6 +204,7 @@ export default function PortalCarta() {
                 />
               )}
 
+              {/* Fade elegante (si quieres blur, que sea aquí arriba del video) */}
               <motion.div
                 className="fadeElegant"
                 initial={{ opacity: 0 }}
@@ -243,17 +257,25 @@ body{ margin:0; background:#000; }
   background:#000;
 }
 
+/* ✅ Sin filter aquí (los filtros suelen suavizar el video) */
 .videoInner{
   position:absolute;
   inset:0;
-  will-change: transform, filter;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
+/* Video full screen */
 .videoFull{
   width:100%;
   height:100%;
   display:block;
   object-fit: cover;
+
+  /* ✅ evita “softness” por render extraño */
+  image-rendering: auto;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .blockAll{
@@ -275,6 +297,7 @@ body{ margin:0; background:#000; }
   z-index: 25;
 }
 
+/* ✅ Si quieres blur/oscurecer, hazlo en overlay arriba del video */
 .fadeElegant{
   position:absolute;
   inset:0;
