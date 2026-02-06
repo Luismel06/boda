@@ -537,7 +537,7 @@ export default function Invite() {
       monthTitle: "Junio 2026",
       venue: "Salón Vista Marina",
       city: "Santo Domingo, RD",
-      time: "5:00 PM",
+      time: "4:30 PM",
       addressLine: "",
       mapsQuery: "Salón Vista Marina Santo Domingo",
 
