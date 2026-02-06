@@ -533,7 +533,7 @@ export default function Invite() {
     () => ({
       couple: "Junior & Glenny",
       initials: "JG",
-      dateISO: "2026-06-26T17:00:00-04:00",
+      dateISO: "2026-06-26T16:30:00-04:00",
       monthTitle: "Junio 2026",
       venue: "Salón Vista Marina",
       city: "Santo Domingo, RD",
@@ -982,7 +982,7 @@ export default function Invite() {
 
           {/* 3) Ceremonia / Ubicación */}
           <SheetSection id="ceremonia" bgImage={WEDDING.sectionBg3} watermark="RSVP">
-            <HeaderScript title="Ubicacion" subtitle="Te esperamos en este hermoso lugar." />
+            <HeaderScript title="Ubicación" subtitle="Te esperamos en este hermoso lugar." />
 
             <div className="layoutSplit">
               <div className="cardSoft mapCard">
@@ -1038,7 +1038,7 @@ export default function Invite() {
           <SheetSection id="regalos" watermark={WEDDING.initials}>
             <HeaderScript
               title="Detalle"
-              subtitle="Tu presencia es lo más importante. Si deseas colaborar con nuestra luna de miel, aquí está la información. (opcional)"
+              subtitle="Tu presencia es lo más importante, pero si deseas colaborar con nuestra luna de miel, aquí está la información. (opcional)"
             />
 
             <div className="giftGrid">
