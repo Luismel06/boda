@@ -28,9 +28,6 @@ type RSVPInsert = {
   first_name: string;
   last_name: string;
   phone: string;
-  guests_count: number;
-  kids: boolean;
-  kids_count: number;
 };
 
 type Toast = { type: "ok" | "err"; msg: string } | null;
@@ -742,62 +739,53 @@ export default function Invite() {
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
-    phone: "", // ✅ store ONLY digits
-    guests: 1,
-    kids: false,
-    kids_count: 0,
+    phone: "",
   });
 
   const [sending, setSending] = useState(false);
   const [confetti, setConfetti] = useState(false);
 
-  const submitRSVP = async (e: React.FormEvent) => {
-    e.preventDefault();
+ const submitRSVP = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    const phoneDigits = onlyDigits(form.phone);
+  const phoneDigits = onlyDigits(form.phone);
 
-    const payload: RSVPInsert = {
-      first_name: form.first_name.trim(),
-      last_name: form.last_name.trim(),
-      phone: phoneDigits, // ✅ send only digits to DB
-      guests_count: Number(form.guests) || 1,
-      kids: Boolean(form.kids),
-      kids_count: form.kids ? Number(form.kids_count) || 0 : 0,
-    };
-
-    if (!payload.first_name || !payload.last_name || !payload.phone) {
-      showToast("err", "Completa nombre, apellido y teléfono.");
-      return;
-    }
-
-    // (opcional) mínimo 10 dígitos
-    if (payload.phone.length < 10) {
-      showToast("err", "El teléfono debe tener al menos 10 dígitos.");
-      return;
-    }
-
-    setSending(true);
-    const { error } = await supabase.from("rsvps").insert(payload);
-    setSending(false);
-
-    if (error) {
-      showToast("err", "No se pudo enviar. Intenta de nuevo.");
-      return;
-    }
-
-    showToast("ok", "¡Confirmación enviada! Gracias");
-    setConfetti(true);
-    window.setTimeout(() => setConfetti(false), 1600);
-
-    setForm({
-      first_name: "",
-      last_name: "",
-      phone: "",
-      guests: 1,
-      kids: false,
-      kids_count: 0,
-    });
+  const payload: RSVPInsert = {
+    first_name: form.first_name.trim(),
+    last_name: form.last_name.trim(),
+    phone: phoneDigits,
   };
+
+  if (!payload.first_name || !payload.last_name || !payload.phone) {
+    showToast("err", "Completa nombre, apellido y teléfono.");
+    return;
+  }
+
+  if (payload.phone.length < 10) {
+    showToast("err", "El teléfono debe tener al menos 10 dígitos.");
+    return;
+  }
+
+  setSending(true);
+  const { error } = await supabase.from("rsvps").insert(payload);
+  setSending(false);
+
+  if (error) {
+    showToast("err", "No se pudo enviar. Intenta de nuevo.");
+    return;
+  }
+
+  showToast("ok", "¡Confirmación enviada! Gracias");
+  setConfetti(true);
+  window.setTimeout(() => setConfetti(false), 1600);
+
+  setForm({
+    first_name: "",
+    last_name: "",
+    phone: "",
+  });
+};
+
 
   const copyBank = async () => {
     try {
@@ -1140,45 +1128,7 @@ export default function Invite() {
                     />
                     <div className="hint">Solo números (mínimo 10 dígitos)</div>
                   </Field>
-
-                  <Field label="¿Cuántas personas van contigo?">
-                    <input
-                      className="input"
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={form.guests}
-                      onChange={(e) => setForm((p) => ({ ...p, guests: Number(e.target.value) }))}
-                    />
-                    <div className="hint">Incluyéndote (1 si vas solo/a)</div>
-                  </Field>
                 </div>
-
-                <div className="grid2">
-                  <Field label="¿Asistirán niños?">
-                    <select
-                      className="input"
-                      value={form.kids ? "si" : "no"}
-                      onChange={(e) => setForm((p) => ({ ...p, kids: e.target.value === "si" }))}
-                    >
-                      <option value="no">No</option>
-                      <option value="si">Sí</option>
-                    </select>
-                  </Field>
-
-                  <Field label="Cantidad de niños">
-                    <input
-                      className="input"
-                      type="number"
-                      min={0}
-                      max={20}
-                      value={form.kids ? form.kids_count : 0}
-                      onChange={(e) => setForm((p) => ({ ...p, kids_count: Number(e.target.value) }))}
-                      disabled={!form.kids}
-                    />
-                  </Field>
-                </div>
-
                 <div className="btnRow" style={{ justifyContent: "flex-start" }}>
                   <button className="pillBtn solid" disabled={sending} type="submit">
                     {sending ? "Enviando..." : "Confirmar"}

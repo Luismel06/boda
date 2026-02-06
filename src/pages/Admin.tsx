@@ -12,13 +12,8 @@ type RSVPRow = {
   first_name: string;
   last_name: string;
   phone: string;
-  guests_count: number;
-  kids: boolean;
-  kids_count: number;
   created_at: string;
 };
-
-type FilterMode = "all" | "kids" | "no_kids";
 
 function fmtDate(ts: string) {
   try {
@@ -46,7 +41,6 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [q, setQ] = useState("");
   const [errMsg, setErrMsg] = useState<string | null>(null);
-  const [filter, setFilter] = useState<FilterMode>("all");
 
   // ============== UI EXTRA ==============
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
@@ -84,24 +78,16 @@ export default function Admin() {
   }, []);
 
   const totals = useMemo(() => {
-    const totalGuests = rows.reduce((a, r) => a + (Number(r.guests_count) || 0), 0);
-    const totalKids = rows.reduce((a, r) => a + (Number(r.kids_count) || 0), 0);
     const totalConfirmed = rows.length;
-    const totalWithKids = rows.reduce((a, r) => a + ((Number(r.kids_count) || 0) > 0 ? 1 : 0), 0);
-    return { totalGuests, totalKids, totalConfirmed, totalWithKids };
+    const totalPeople = rows.length; // ✅ 1 persona por confirmación (sin acompañantes)
+    return { totalConfirmed, totalPeople };
   }, [rows]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-
-    let base = rows;
-    if (filter === "kids") base = rows.filter((r) => (Number(r.kids_count) || 0) > 0);
-    if (filter === "no_kids") base = rows.filter((r) => (Number(r.kids_count) || 0) === 0);
-
-    if (!s) return base;
-
-    return base.filter((r) => `${r.first_name} ${r.last_name} ${r.phone}`.toLowerCase().includes(s));
-  }, [q, rows, filter]);
+    if (!s) return rows;
+    return rows.filter((r) => `${r.first_name} ${r.last_name} ${r.phone}`.toLowerCase().includes(s));
+  }, [q, rows]);
 
   const load = async () => {
     setErrMsg(null);
@@ -109,7 +95,7 @@ export default function Admin() {
 
     const { data, error } = await supabase
       .from("rsvps")
-      .select("id,first_name,last_name,phone,guests_count,kids,kids_count,created_at")
+      .select("id,first_name,last_name,phone,created_at")
       .order("created_at", { ascending: false });
 
     setLoading(false);
@@ -278,7 +264,7 @@ export default function Admin() {
 
               {errMsg ? <div className="errorBox">Error: {errMsg}</div> : null}
 
-              <div className="hint">*Este acceso solo es para los Novios .</div>
+              <div className="hint">*Este acceso solo es para los Novios.</div>
             </form>
           </motion.div>
         </div>
@@ -307,10 +293,10 @@ export default function Admin() {
           </div>
 
           <div className="topActions">
-            <button className="btnGhost" onClick={() => load()}>
+            <button className="btnGhost" onClick={() => load()} type="button">
               {loading ? "..." : "Actualizar"}
             </button>
-            <button className="btnDanger" onClick={signOut}>
+            <button className="btnDanger" onClick={signOut} type="button">
               Salir
             </button>
           </div>
@@ -321,12 +307,10 @@ export default function Admin() {
         {/* Stats cards */}
         <motion.div className="statsGrid" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <StatCard label="Confirmaciones" value={totals.totalConfirmed} />
-          <StatCard label="Personas" value={totals.totalGuests} />
-          <StatCard label="Niños" value={totals.totalKids} />
-          <StatCard label="Con niños" value={totals.totalWithKids} />
+          <StatCard label="Personas" value={totals.totalPeople} />
         </motion.div>
 
-        {/* Search + filter */}
+        {/* Search */}
         <div className="tools">
           <div className="searchWrap">
             <span className="searchIcon">⌕</span>
@@ -342,18 +326,6 @@ export default function Admin() {
               </button>
             ) : null}
           </div>
-
-          <div className="filterRow">
-            <Chip on={filter === "all"} onClick={() => setFilter("all")}>
-              Todos
-            </Chip>
-            <Chip on={filter === "kids"} onClick={() => setFilter("kids")}>
-              Con niños
-            </Chip>
-            <Chip on={filter === "no_kids"} onClick={() => setFilter("no_kids")}>
-              Sin niños
-            </Chip>
-          </div>
         </div>
 
         {errMsg ? <div className="errorBox">Error: {errMsg}</div> : null}
@@ -361,11 +333,21 @@ export default function Admin() {
         {/* List */}
         <AnimatePresence>
           {loading ? (
-            <motion.div className="glassCard centerCard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <motion.div
+              className="glassCard centerCard"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+            >
               Cargando...
             </motion.div>
           ) : filtered.length === 0 ? (
-            <motion.div className="glassCard centerCard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <motion.div
+              className="glassCard centerCard"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+            >
               No hay confirmaciones.
             </motion.div>
           ) : (
@@ -397,14 +379,6 @@ export default function Admin() {
                         <div className="idPill">#{r.id.slice(0, 6)}</div>
                       </div>
                     </div>
-
-                    <div className="chips">
-                      <Tag>
-                        👥 {Number(r.guests_count) || 0} {Number(r.guests_count) === 1 ? "persona" : "personas"}
-                      </Tag>
-                      <Tag>🧒 {Number(r.kids_count) || 0} niños</Tag>
-                      {(Number(r.kids_count) || 0) > 0 ? <Tag className="tagOk">Niños ✓</Tag> : <Tag className="tagOff">Sin niños</Tag>}
-                    </div>
                   </button>
 
                   <button
@@ -433,7 +407,11 @@ export default function Admin() {
             <span className="bottomIco">↻</span>
             <span className="bottomTxt">{loading ? "..." : "Actualizar"}</span>
           </button>
-          <button className="bottomBtn" onClick={() => copy(String(totals.totalGuests), "Total de personas copiado")} type="button">
+          <button
+            className="bottomBtn"
+            onClick={() => copy(String(totals.totalPeople), "Total de personas copiado")}
+            type="button"
+          >
             <span className="bottomIco">⎘</span>
             <span className="bottomTxt">Copiar total</span>
           </button>
@@ -484,16 +462,16 @@ export default function Admin() {
 
               <div className="modalGrid">
                 <div className="miniCard">
-                  <div className="miniLbl">Personas</div>
-                  <div className="miniVal">{Number(selected.guests_count) || 0}</div>
-                </div>
-                <div className="miniCard">
-                  <div className="miniLbl">Niños</div>
-                  <div className="miniVal">{Number(selected.kids_count) || 0}</div>
-                </div>
-                <div className="miniCard">
                   <div className="miniLbl">ID</div>
                   <div className="miniVal mono">#{selected.id.slice(0, 8)}</div>
+                </div>
+                <div className="miniCard">
+                  <div className="miniLbl">Teléfono</div>
+                  <div className="miniVal mono">{selected.phone}</div>
+                </div>
+                <div className="miniCard">
+                  <div className="miniLbl">Fecha</div>
+                  <div className="miniVal">{fmtDate(selected.created_at)}</div>
                 </div>
               </div>
 
@@ -569,18 +547,6 @@ export default function Admin() {
 }
 
 /* ===================== Components ===================== */
-
-function Chip({ on, children, onClick }: { on: boolean; children: React.ReactNode; onClick: () => void }) {
-  return (
-    <button className={`chip ${on ? "on" : ""}`} onClick={onClick} type="button">
-      {children}
-    </button>
-  );
-}
-
-function Tag({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`tag ${className}`}>{children}</div>;
-}
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
@@ -787,28 +753,12 @@ body{
   cursor:pointer;
   box-shadow: 0 10px 26px rgba(2,2,11,.08);
 }
-.filterRow{ display:flex; gap: 10px; flex-wrap: wrap; }
-
-/* Chips */
-.chip{
-  border-radius: 999px;
-  border: 1px solid rgba(13,21,70,.12);
-  background: rgba(255,255,255,.80);
-  padding: 10px 12px;
-  cursor:pointer;
-  font-size: 12px;
-  box-shadow: 0 12px 28px rgba(2,2,11,.08);
-}
-.chip.on{
-  border-color: rgba(214,179,122,.70);
-  background: rgba(230,208,169,.26);
-}
 
 /* Stats */
 .statsGrid{
   margin-top: 10px;
   display:grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 .statCard{
@@ -859,8 +809,8 @@ body{
 .rowDeleteBtn{
   position: absolute;
   right: 12px;
-  bottom: 12px;      /* 👈 abajo */
-  top: auto;         /* 👈 quita el top */
+  bottom: 12px;
+  top: auto;
 
   border-radius: 999px;
   border: 1px solid rgba(220,80,80,.35);
@@ -878,7 +828,6 @@ body{
   opacity: .6;
   cursor: not-allowed;
 }
-
 
 /* Row content */
 .rowTop{ display:flex; gap: 12px; align-items:center; }
@@ -927,19 +876,6 @@ body{
   background: rgba(255,255,255,.78);
   opacity:.85;
 }
-
-/* Tags */
-.chips{ margin-top: 12px; display:flex; flex-wrap: wrap; gap: 8px; }
-.tag{
-  border-radius: 999px;
-  border: 1px solid rgba(13,21,70,.12);
-  background: rgba(255,255,255,.78);
-  padding: 8px 10px;
-  font-size: 12px;
-  box-shadow: 0 12px 28px rgba(2,2,11,.06);
-}
-.tagOk{ border-color: rgba(214,179,122,.75); background: rgba(230,208,169,.22); }
-.tagOff{ opacity: .75; }
 
 /* Buttons */
 .topActions{ display:flex; gap: 10px; align-items:center; }
