@@ -12,11 +12,7 @@ export default function PortalCarta() {
 
   const [phase, setPhase] = useState<Phase>("idle");
   const videoRef = useRef<HTMLVideoElement | null>(null);
-
-  // Assets
-  // ✅ Ya NO usamos BG como fondo, lo usamos como POSTER del video (primer frame visual)
-  const POSTER_IMG =
-    "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/Inicio-def.png";
+  const [videoReady, setVideoReady] = useState(false);
 
   const VIDEO_SRC =
     "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/VIDEO%201111.mp4";
@@ -26,7 +22,7 @@ export default function PortalCarta() {
   const NAV_DELAY_MS = 650;
 
   // Click areas
-  const envelopeHit = useMemo(
+const envelopeHit = useMemo(
     () =>
       ({
         top: "35.7%",
@@ -49,24 +45,90 @@ export default function PortalCarta() {
     []
   );
 
-  // Configure video element once
+  // Configure video once
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
+
     try {
       v.muted = true;
       v.playsInline = true;
       v.preload = "auto";
       v.controls = false;
+
+      // ✅ importante: que cargue el primer frame
+      v.load();
     } catch {
       // ignore
     }
   }, []);
 
+  // ✅ Fuerza mostrar el PRIMER frame real del video (sin poster)
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+
+    const freezeFirstFrame = async () => {
+      try {
+        // En algunos browsers, currentTime=0 no “pinta”.
+        // 0.01 ayuda a forzar el frame sin saltar visualmente.
+        v.pause();
+
+        // Espera metadata para poder hacer seek
+        if (!Number.isFinite(v.duration) || v.duration === 0) {
+          // noop, igual intentamos en eventos
+        }
+
+        v.currentTime = 0.01;
+
+        // Espera a que el seek aplique y luego pausa
+        // (con esto el frame queda “dibujado”)
+        await new Promise<void>((resolve) => {
+          const done = () => {
+            v.removeEventListener("seeked", done);
+            resolve();
+          };
+          v.addEventListener("seeked", done, { once: true });
+          // fallback: si seeked no dispara, igual resolve
+          window.setTimeout(() => {
+            v.removeEventListener("seeked", done);
+            resolve();
+          }, 250);
+        });
+
+        v.pause();
+        setVideoReady(true);
+      } catch {
+        // si falla, igual marcamos ready cuando haya data
+      }
+    };
+
+    const onLoadedData = () => {
+      // ya hay data para pintar al menos un frame
+      freezeFirstFrame();
+    };
+
+    const onLoadedMetadata = () => {
+      // metadata listo, intentamos congelar
+      freezeFirstFrame();
+    };
+
+    v.addEventListener("loadeddata", onLoadedData);
+    v.addEventListener("loadedmetadata", onLoadedMetadata);
+
+    // Intento inmediato por si ya estaba cacheado
+    freezeFirstFrame();
+
+    return () => {
+      v.removeEventListener("loadeddata", onLoadedData);
+      v.removeEventListener("loadedmetadata", onLoadedMetadata);
+    };
+  }, []);
+
   const startVideo = async () => {
     if (phase !== "idle") return;
 
-    // Start music from a real click
+    // Start music from click
     try {
       await music.start();
     } catch {
@@ -80,7 +142,7 @@ export default function PortalCarta() {
       if (!v) return;
 
       try {
-        // ✅ fuerza empezar desde el inicio
+        // ✅ vuelve al inicio real
         v.currentTime = 0;
         v.muted = true;
         v.playsInline = true;
@@ -104,11 +166,9 @@ export default function PortalCarta() {
       return;
     }
 
-    // ✅ “Freeze” en el último frame:
-    // 1) pausa
-    // 2) aseguramos que se quede al final (por si el browser regresa a 0)
     try {
       v.pause();
+      // ✅ freeze en el último frame
       const safeEnd = Math.max(0, (v.duration || 0) - 0.04);
       if (Number.isFinite(safeEnd) && safeEnd > 0) v.currentTime = safeEnd;
     } catch {
@@ -122,7 +182,6 @@ export default function PortalCarta() {
     if (phase === "leaving") return;
 
     setPhase("leaving");
-
     try {
       videoRef.current?.pause();
     } catch {
@@ -135,36 +194,42 @@ export default function PortalCarta() {
   const isLeaving = phase === "leaving";
   const showFinalHit = phase === "ready";
 
-  // ✅ En tu versión anterior tenías esto:
-  // const lockAllClicks = phase === "ready";
-  // pero eso bloqueaba también el hitFinal (porque cubre toda la pantalla).
-  // Aquí NO bloqueamos toda la pantalla; solo controlamos por fase.
-
   return (
     <LazyMotion features={domAnimation}>
       <style>{styles()}</style>
 
       <div className="portalRoot">
-        {/* ✅ VIDEO siempre presente (sin fondo detrás) */}
+        {/* ✅ Solo VIDEO (sin poster, sin bg) */}
         <div className="videoBase">
           <video
             ref={videoRef}
             className="videoFull"
             src={VIDEO_SRC}
-            poster={POSTER_IMG}
             playsInline
             muted
             preload="auto"
             controls={false}
             disablePictureInPicture
             controlsList="nodownload noplaybackrate noremoteplayback"
-            // ✅ Para que al terminar no se quede “en negro” en algunos browsers:
-            // mantenemos la pantalla y luego fijamos currentTime en onVideoEnded.
             onEnded={onVideoEnded}
           />
         </div>
 
-        {/* ✅ Hit inicial (solo cuando está idle) */}
+        {/* (Opcional) si dura en mostrar el primer frame, dejamos un fade sutil */}
+        <AnimatePresence>
+          {!videoReady && (
+            <motion.div
+              className="loadingShade"
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              aria-hidden="true"
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Hit inicial (solo idle) */}
         {phase === "idle" && (
           <button
             type="button"
@@ -175,7 +240,7 @@ export default function PortalCarta() {
           />
         )}
 
-        {/* ✅ Cuando está en fase video, permitimos click para “reintentar play” si el browser lo bloqueó */}
+        {/* Tap overlay durante reproducción (por si play se bloquea) */}
         {phase === "video" && (
           <button
             type="button"
@@ -187,7 +252,7 @@ export default function PortalCarta() {
           />
         )}
 
-        {/* ✅ Hit final */}
+        {/* Hit final */}
         <AnimatePresence>
           {showFinalHit && (
             <motion.button
@@ -235,7 +300,6 @@ body{ margin:0; background:#000; }
   background:#000;
 }
 
-/* Video siempre full screen */
 .videoBase{
   position:fixed;
   inset:0;
@@ -249,14 +313,19 @@ body{ margin:0; background:#000; }
   height:100%;
   display:block;
   object-fit: cover;
-
-  /* evita “softness” por render raro */
   image-rendering: auto;
   transform: translateZ(0);
   backface-visibility: hidden;
 }
 
-/* Hit inicial */
+/* Shade mientras carga el primer frame */
+.loadingShade{
+  position:fixed;
+  inset:0;
+  z-index: 15;
+  background: #000;
+}
+
 .hit{
   position:fixed;
   border:0;
@@ -266,7 +335,6 @@ body{ margin:0; background:#000; }
   z-index: 30;
 }
 
-/* Tap overlay durante reproducción (por si el play se bloquea) */
 .tapToPlay{
   position:fixed;
   inset:0;
@@ -277,7 +345,6 @@ body{ margin:0; background:#000; }
   z-index: 20;
 }
 
-/* Hit final */
 .hitFinal{
   position:fixed;
   border:0;
@@ -287,7 +354,6 @@ body{ margin:0; background:#000; }
   z-index: 40;
 }
 
-/* Fade elegante al salir */
 .fadeElegant{
   position:fixed;
   inset:0;
