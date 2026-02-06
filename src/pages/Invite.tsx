@@ -944,7 +944,7 @@ export default function Invite() {
 
           {/* 3) Ceremonia / Ubicación */}
           <SheetSection id="ceremonia" bgImage={WEDDING.sectionBg3} watermark="RSVP">
-            <HeaderScript title="Ubicacion" subtitle="Te esperamos en esta hermosa ubicación." />
+            <HeaderScript title="Ubicacion" subtitle="Te esperamos en este hermoso lugar." />
 
             <div className="layoutSplit">
               <div className="cardSoft mapCard">
@@ -1852,40 +1852,49 @@ body{
 
 /* Countdown */
 .countdown{ margin-top: 12px; }
+
 .countDigits{
   display:flex;
   align-items:flex-end;
-  justify-content:flex-start;
-  gap: 10px;
-  flex-wrap: wrap;
+  justify-content:space-between; /* reparte mejor */
+  gap: 6px;                      /* menos espacio */
+  flex-wrap: nowrap;             /* ✅ NO wrap */
 }
+
 .colon{
   font-family: "Playfair Display", serif;
-  font-size: 26px;
+  font-size: 18px;               /* ↓ antes 26 */
   color: rgba(11,22,48,.45);
-  margin-bottom: 10px;
+  margin-bottom: 8px;            /* ↓ antes 10 */
+  flex: 0 0 auto;
 }
+
 .digitBlock{
-  min-width: 86px;
-  border-radius: 16px;
+  min-width: 0;                  /* ✅ permite encoger */
+  flex: 1 1 0;                   /* ✅ 4 bloques iguales */
+  border-radius: 14px;           /* ↓ antes 16 */
   border: 1px solid var(--line2);
   background: rgba(255,255,255,.72);
-  padding: 10px 10px;
+  padding: 8px 8px;              /* ↓ antes 10 */
   text-align:center;
 }
+
 .digit{
   font-family: "Playfair Display", serif;
-  font-size: 28px;
-  letter-spacing: .06em;
+  font-size: 22px;               /* ↓ antes 28 */
+  letter-spacing: .04em;         /* ↓ antes .06 */
   color: rgba(11,22,48,.92);
+  line-height: 1;
 }
+
 .digitLbl{
-  margin-top: 6px;
+  margin-top: 4px;               /* ↓ antes 6 */
   font-family: Cinzel, serif;
-  font-size: 10px;
-  letter-spacing: .14em;
+  font-size: 9px;                /* ↓ antes 10 */
+  letter-spacing: .12em;         /* ↓ antes .14 */
   text-transform: uppercase;
   color: rgba(11,22,48,.60);
+  white-space: nowrap;           /* ✅ no rompe label */
 }
 
 /* Calendar */
