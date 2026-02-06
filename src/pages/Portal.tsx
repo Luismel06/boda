@@ -14,7 +14,7 @@ export default function PortalCarta() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Assets
-  const BG_IMG = "/INICIO.png";
+  const BG_IMG = "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/INICIO.png";
   const VIDEO_SRC =
     "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/VIDEO%201111.mp4";
 
