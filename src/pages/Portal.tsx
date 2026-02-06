@@ -14,7 +14,10 @@ export default function PortalCarta() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Assets
-  const BG_IMG = "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/Inicio-def.png";
+  // ✅ Ya NO usamos BG como fondo, lo usamos como POSTER del video (primer frame visual)
+  const POSTER_IMG =
+    "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/Inicio-def.png";
+
   const VIDEO_SRC =
     "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/VIDEO%201111.mp4";
 
@@ -28,8 +31,8 @@ export default function PortalCarta() {
       ({
         top: "35.7%",
         left: "10%",
-        width: "83%",
-        height: "35%",
+        width: "80%",
+        height: "25%",
       }) as const,
     []
   );
@@ -37,10 +40,10 @@ export default function PortalCarta() {
   const finalHit = useMemo(
     () =>
       ({
-        top: "50%",
+        top: "48%",
         left: "50%",
         width: "25%",
-        height: "20%",
+        height: "15%",
         transform: "translate(-50%, -50%)",
       }) as const,
     []
@@ -77,6 +80,7 @@ export default function PortalCarta() {
       if (!v) return;
 
       try {
+        // ✅ fuerza empezar desde el inicio
         v.currentTime = 0;
         v.muted = true;
         v.playsInline = true;
@@ -94,11 +98,23 @@ export default function PortalCarta() {
   };
 
   const onVideoEnded = () => {
+    const v = videoRef.current;
+    if (!v) {
+      setPhase("ready");
+      return;
+    }
+
+    // ✅ “Freeze” en el último frame:
+    // 1) pausa
+    // 2) aseguramos que se quede al final (por si el browser regresa a 0)
     try {
-      videoRef.current?.pause();
+      v.pause();
+      const safeEnd = Math.max(0, (v.duration || 0) - 0.04);
+      if (Number.isFinite(safeEnd) && safeEnd > 0) v.currentTime = safeEnd;
     } catch {
       // ignore
     }
+
     setPhase("ready");
   };
 
@@ -117,17 +133,38 @@ export default function PortalCarta() {
   };
 
   const isLeaving = phase === "leaving";
-  const showVideoLayer = phase === "video" || phase === "ready" || phase === "leaving";
   const showFinalHit = phase === "ready";
-  const lockAllClicks = phase === "ready";
+
+  // ✅ En tu versión anterior tenías esto:
+  // const lockAllClicks = phase === "ready";
+  // pero eso bloqueaba también el hitFinal (porque cubre toda la pantalla).
+  // Aquí NO bloqueamos toda la pantalla; solo controlamos por fase.
 
   return (
     <LazyMotion features={domAnimation}>
-      <style>{styles(BG_IMG)}</style>
+      <style>{styles()}</style>
 
       <div className="portalRoot">
-        <div className="bg" aria-hidden="true" />
+        {/* ✅ VIDEO siempre presente (sin fondo detrás) */}
+        <div className="videoBase">
+          <video
+            ref={videoRef}
+            className="videoFull"
+            src={VIDEO_SRC}
+            poster={POSTER_IMG}
+            playsInline
+            muted
+            preload="auto"
+            controls={false}
+            disablePictureInPicture
+            controlsList="nodownload noplaybackrate noremoteplayback"
+            // ✅ Para que al terminar no se quede “en negro” en algunos browsers:
+            // mantenemos la pantalla y luego fijamos currentTime en onVideoEnded.
+            onEnded={onVideoEnded}
+          />
+        </div>
 
+        {/* ✅ Hit inicial (solo cuando está idle) */}
         {phase === "idle" && (
           <button
             type="button"
@@ -138,81 +175,46 @@ export default function PortalCarta() {
           />
         )}
 
+        {/* ✅ Cuando está en fase video, permitimos click para “reintentar play” si el browser lo bloqueó */}
+        {phase === "video" && (
+          <button
+            type="button"
+            className="tapToPlay"
+            aria-label="Reproducir video"
+            onClick={() => {
+              videoRef.current?.play().catch(() => {});
+            }}
+          />
+        )}
+
+        {/* ✅ Hit final */}
         <AnimatePresence>
-          {showVideoLayer && (
+          {showFinalHit && (
+            <motion.button
+              type="button"
+              className="hitFinal"
+              style={finalHit as CSSProperties}
+              onClick={goInvite}
+              aria-label="Ver más detalles"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Fade elegante al salir */}
+        <AnimatePresence>
+          {isLeaving && (
             <motion.div
-              className="videoOverlay"
+              className="fadeElegant"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
-            >
-              {/* ⚠️ IMPORTANTE:
-                  - NO usar filter en el wrapper del video (ni blur(0)).
-                  - Si quieres “blur”/fade, hazlo con overlay encima (fadeElegant).
-               */}
-              <motion.div
-                className="videoInner"
-                initial={false}
-                animate={{
-                  scale: isLeaving ? 1.02 : 1,
-                }}
-                transition={{ duration: EXIT_FADE_MS / 1000, ease: [0.2, 0.8, 0.2, 1] }}
-              >
-                <video
-                  ref={videoRef}
-                  className="videoFull"
-                  src={VIDEO_SRC}
-                  playsInline
-                  muted
-                  autoPlay={phase === "video"}
-                  preload="auto"
-                  controls={false}
-                  // ayuda a evitar opciones raras en mobile/desktop
-                  disablePictureInPicture
-                  controlsList="nodownload noplaybackrate noremoteplayback"
-                  // crossOrigin no es necesario para reproducir; solo si haces canvas/WebGL con el video.
-                  // crossOrigin="anonymous"
-                  onEnded={onVideoEnded}
-                  onClick={phase === "video" ? () => videoRef.current?.play() : undefined}
-                />
-              </motion.div>
-
-              {lockAllClicks && (
-                <button
-                  type="button"
-                  className="blockAll"
-                  aria-label="Bloqueo de interacción"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                />
-              )}
-
-              {showFinalHit && (
-                <button
-                  type="button"
-                  className="hitFinal"
-                  style={finalHit as CSSProperties}
-                  onClick={goInvite}
-                  aria-label="Ver más detalles"
-                />
-              )}
-
-              {/* Fade elegante (si quieres blur, que sea aquí arriba del video) */}
-              <motion.div
-                className="fadeElegant"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: isLeaving ? 1 : 0 }}
-                transition={{ duration: EXIT_FADE_MS / 1000, ease: [0.2, 0.8, 0.2, 1] }}
-                aria-hidden="true"
-              />
-            </motion.div>
+              transition={{ duration: EXIT_FADE_MS / 1000, ease: [0.2, 0.8, 0.2, 1] }}
+              aria-hidden="true"
+            />
           )}
         </AnimatePresence>
       </div>
@@ -220,7 +222,7 @@ export default function PortalCarta() {
   );
 }
 
-const styles = (bgImg: string) => `
+const styles = () => `
 *{ box-sizing:border-box; }
 html,body{ height:100%; }
 body{ margin:0; background:#000; }
@@ -230,77 +232,66 @@ body{ margin:0; background:#000; }
   width:100vw;
   min-height:100svh;
   overflow:hidden;
-}
-
-.bg{
-  position:fixed;
-  inset:0;
-  background-image:url("${bgImg}");
-  background-repeat:no-repeat;
-  background-position:center;
-  background-size:cover;
-}
-
-.hit{
-  position:fixed;
-  border:0;
-  padding:0;
-  background:transparent;
-  cursor:pointer;
-  z-index: 10;
-}
-
-.videoOverlay{
-  position:fixed;
-  inset:0;
-  z-index: 20;
   background:#000;
 }
 
-/* ✅ Sin filter aquí (los filtros suelen suavizar el video) */
-.videoInner{
-  position:absolute;
+/* Video siempre full screen */
+.videoBase{
+  position:fixed;
   inset:0;
-  will-change: transform;
+  z-index: 10;
+  background:#000;
   transform: translateZ(0);
 }
 
-/* Video full screen */
 .videoFull{
   width:100%;
   height:100%;
   display:block;
   object-fit: cover;
 
-  /* ✅ evita “softness” por render extraño */
+  /* evita “softness” por render raro */
   image-rendering: auto;
   transform: translateZ(0);
   backface-visibility: hidden;
 }
 
-.blockAll{
-  position:absolute;
+/* Hit inicial */
+.hit{
+  position:fixed;
+  border:0;
+  padding:0;
+  background:transparent;
+  cursor:pointer;
+  z-index: 30;
+}
+
+/* Tap overlay durante reproducción (por si el play se bloquea) */
+.tapToPlay{
+  position:fixed;
   inset:0;
   border:0;
   padding:0;
   background:transparent;
   cursor: default;
-  z-index: 24;
+  z-index: 20;
 }
 
+/* Hit final */
 .hitFinal{
-  position:absolute;
+  position:fixed;
   border:0;
   padding:0;
   background:transparent;
   cursor:pointer;
-  z-index: 25;
+  z-index: 40;
 }
 
-/* ✅ Si quieres blur/oscurecer, hazlo en overlay arriba del video */
+/* Fade elegante al salir */
 .fadeElegant{
-  position:absolute;
+  position:fixed;
   inset:0;
+  z-index: 60;
   pointer-events:none;
   background: rgba(0,0,0,.88);
   backdrop-filter: blur(6px);
