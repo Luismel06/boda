@@ -563,7 +563,7 @@ export default function Invite() {
         bank: "Banco BHD",
         type: "Cuenta de ahorros",
         account: "40166990017",
-        name: "Glenny Aquino",
+        name: "Glenny Aquino - Ramon Ceballo",
         cedula: "00117953034",
       },
 
@@ -1003,7 +1003,7 @@ export default function Invite() {
 
           {/* 4) Vestimenta */}
           <SheetSection id="vestimenta" watermark="DRESS">
-            <HeaderScript title="Código de vestimenta" subtitle="Formal-elegante. Tonos suaves, evitando blanco por favor." />
+            <HeaderScript title="Código de vestimenta" />
 
             <div className="layoutSplit">
               <div className="cardSoft dressTextCard">
@@ -1031,14 +1031,17 @@ export default function Invite() {
           {/* 5) Regalos */}
           <SheetSection id="regalos" watermark={WEDDING.initials}>
             <HeaderScript
-              title="Regalo"
-              subtitle={
-              <>
-              Tu presencia es lo más importante. Si deseas tener un detalle para nosotros puedes hacerlo en esta cuenta. (
-              <strong>opcional</strong>)
-              </>
-             }
-            />
+  title="Regalo"
+  subtitle={
+    <>
+      Tu presencia es lo más importante. Si deseas tener un detalle para nosotros puedes hacerlo en esta cuenta. <br></br>{" "}
+      <strong>
+        <span style={{ fontSize: "1.2em" }}>(OPCIONAL)</span>
+      </strong>
+    </>
+  }
+/>
+
 
             <div className="giftGrid">
               <div className="cardSoft bankCard">
@@ -1150,7 +1153,7 @@ export default function Invite() {
               <footer className="footer">
                 <div className="mono">{WEDDING.initials}</div>
                 <div className="footerLine">Con amor, {WEDDING.couple}</div>
-                <div className="footerSmall">© <strong>26/06/26</strong></div>
+                <div className="footerSmall"><strong><span style={{ fontSize: "2.5em", fontFamily: "Cinzel, serif" }}>26/06/26</span></strong></div>
               </footer>
             </div>
           </SheetSection>
@@ -1598,7 +1601,8 @@ body{
   font-family: Cinzel, serif;
   letter-spacing: .12em;
   text-transform: uppercase;
-  font-size: 10px;
+  font-size: 15px;
+  font-weight: 900;
   backdrop-filter: blur(12px);
 }
 .heroBtn{
@@ -1747,7 +1751,8 @@ body{
   margin-top: 10px;
   text-align:center;
   font-family: Cinzel, serif;
-  font-size: 12px;
+  font-size: 20px;
+  font-weight: 1000;
   letter-spacing: .16em;
   text-transform: uppercase;
   color: rgba(11,22,48,.72);
@@ -1820,9 +1825,10 @@ body{
   align-items:center;
   justify-content:center;
   padding: 9px 12px;
+  font-weight: 1000;
   border-radius: 999px;
   font-family: Cinzel, serif;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: .12em;
   text-transform: uppercase;
   border: 1px solid var(--line);

@@ -15,7 +15,7 @@ export default function PortalCarta() {
   const [videoReady, setVideoReady] = useState(false);
 
   const VIDEO_SRC =
-    "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/video%202.0.mp4";
+    "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/video%203.0.mp4";
 
   // Timing
   const EXIT_FADE_MS = 850;
