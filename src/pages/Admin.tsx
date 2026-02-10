@@ -223,7 +223,7 @@ export default function Admin() {
           <div className="heroTop">
             <div className="brand">
               <div className="brandCaps">Admin RSVP</div>
-              <div className="brandScript">Junior & Glenny</div>
+              <div className="brandScript">Yunior & Glenny</div>
             </div>
           </div>
 
@@ -289,7 +289,7 @@ export default function Admin() {
         <div className="topBarInner">
           <div className="brandMini">
             <div className="brandCaps">Admin RSVP</div>
-            <div className="brandScriptSm">Junior & Glenny</div>
+            <div className="brandScriptSm">Yunior & Glenny</div>
           </div>
 
           <div className="topActions">
