@@ -15,7 +15,7 @@ export default function PortalCarta() {
   const [videoReady, setVideoReady] = useState(false);
 
   const VIDEO_SRC =
-    "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/VIDEO%201111.mp4";
+    "https://uqqrxkeevstxawzycyzc.supabase.co/storage/v1/object/public/fotos/video%202.0.mp4";
 
   // Timing
   const EXIT_FADE_MS = 850;
@@ -37,7 +37,7 @@ const envelopeHit = useMemo(
     () =>
       ({
         top: "48%",
-        left: "50%",
+        left: "48%",
         width: "25%",
         height: "15%",
         transform: "translate(-50%, -50%)",

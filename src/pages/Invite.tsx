@@ -528,8 +528,8 @@ export default function Invite() {
 
   const WEDDING = useMemo(
     () => ({
-      couple: "Junior & Glenny",
-      initials: "JG",
+      couple: "Yunior & Glenny",
+      initials: "YG",
       dateISO: "2026-06-26T16:30:00-04:00",
       monthTitle: "Junio 2026",
       venue: "Salón Vista Marina",
@@ -538,7 +538,7 @@ export default function Invite() {
       addressLine: "",
       mapsQuery: "Salón Vista Marina Santo Domingo",
 
-      heroPhoto: `${supabaseUrl}/storage/v1/object/public/fotos/foto1.jpeg`,
+      heroPhoto: `${supabaseUrl}/storage/v1/object/public/fotos/portada.jpeg`,
       sectionBg1: `${supabaseUrl}/storage/v1/object/public/fotos/foto1.jpeg`,
       sectionBg2: `${supabaseUrl}/storage/v1/object/public/fotos/foto3.jpeg`,
       sectionBg3: `${supabaseUrl}/storage/v1/object/public/fotos/foto4.jpeg`,
@@ -548,6 +548,12 @@ export default function Invite() {
         `${supabaseUrl}/storage/v1/object/public/fotos/foto3.jpeg`,
         `${supabaseUrl}/storage/v1/object/public/fotos/foto4.jpeg`,
         `${supabaseUrl}/storage/v1/object/public/fotos/foto5.jpeg`,
+        `${supabaseUrl}/storage/v1/object/public/fotos/foto6.jpeg`,
+        `${supabaseUrl}/storage/v1/object/public/fotos/foto7.jpeg`,
+        `${supabaseUrl}/storage/v1/object/public/fotos/foto8.jpeg`,
+        `${supabaseUrl}/storage/v1/object/public/fotos/foto9.jpeg`,
+        `${supabaseUrl}/storage/v1/object/public/fotos/foto10.jpeg`,
+        `${supabaseUrl}/storage/v1/object/public/fotos/foto11.jpeg`,
       ],
 
       pinterestUrl: "https://www.pinterest.com/search/pins/?q=outfits%20boda%20formal%20elegante%20hombre%20mujer",
@@ -856,7 +862,7 @@ export default function Invite() {
           <motion.div className="heroPhoto" style={{ scale: heroImgScale }}>
             <motion.img
               src={WEDDING.heroPhoto}
-              alt="Junior y Glenny"
+              alt="Yunior y Glenny"
               initial={false}
               animate={{
                 filter: heroBlurOn ? "blur(8px) saturate(1.05)" : "blur(0px) saturate(1)",
@@ -875,7 +881,7 @@ export default function Invite() {
               </div>
 
               <div className="heroLine">
-                <TypeReveal text="DESPUÉS DE TANTOS AÑOS JUNTOS LO HEMOS DECIDIDO…" delay={0.12} stagger={0.012} />
+                <TypeReveal text="GRACIAS A TANTOS AÑOS JUNTOS LO HEMOS DECIDIDO…" delay={0.12} stagger={0.012} />
               </div>
 
               <div className="heroBig">
@@ -1025,8 +1031,13 @@ export default function Invite() {
           {/* 5) Regalos */}
           <SheetSection id="regalos" watermark={WEDDING.initials}>
             <HeaderScript
-              title="Detalle"
-              subtitle="Tu presencia es lo más importante, pero si deseas colaborar con nuestra luna de miel, aquí está la información. (opcional)"
+              title="Regalo"
+              subtitle={
+              <>
+              Tu presencia es lo más importante. Si deseas tener un detalle para nosotros puedes hacerlo en esta cuenta. (
+              <strong>opcional</strong>)
+              </>
+             }
             />
 
             <div className="giftGrid">
@@ -1139,7 +1150,7 @@ export default function Invite() {
               <footer className="footer">
                 <div className="mono">{WEDDING.initials}</div>
                 <div className="footerLine">Con amor, {WEDDING.couple}</div>
-                <div className="footerSmall">© {new Date().getFullYear()}</div>
+                <div className="footerSmall">© <strong>26/06/26</strong></div>
               </footer>
             </div>
           </SheetSection>
@@ -1196,7 +1207,7 @@ export default function Invite() {
 /** =======================
  *  UI bits
  *  ======================= */
-function HeaderScript({ title, subtitle }: { title: string; subtitle?: string }) {
+function HeaderScript({ title, subtitle }: { title: string; subtitle?: React.ReactNode }) {
   return (
     <div className="head">
       <div className="title">
@@ -1207,6 +1218,7 @@ function HeaderScript({ title, subtitle }: { title: string; subtitle?: string })
     </div>
   );
 }
+
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
